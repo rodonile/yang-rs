@@ -65,6 +65,53 @@ fn main() {
         cmake_config.define("ENABLE_BUILD_TESTS", "OFF");
         cmake_config.define("CMAKE_BUILD_TYPE", "Release");
         cmake_config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
+        #[cfg(not(feature = "cbor"))]
+        {
+            // Prevent CMake from auto-detecting an incidentally-installed
+            // system libcbor and silently building CBOR support into
+            // libyang, which would keep `bundled` builds non-deterministic.
+            cmake_config.define("CMAKE_DISABLE_FIND_PACKAGE_CBOR", "ON");
+        }
+        #[cfg(feature = "cbor")]
+        let cbor_dst = {
+            // Build libcbor from source too (vendored submodule) instead of
+            // relying on a system install, which may use GCC "slim" LTO
+            // objects that `rust-lld` cannot link at all. A plain
+            // `cmake`-crate build doesn't enable LTO, avoiding that.
+            if !Path::new("libcbor/.git").exists() {
+                let _ = Command::new("git")
+                    .args(&["submodule", "update", "--init", "libcbor"])
+                    .status();
+            }
+            let mut cbor_config = cmake::Config::new("libcbor");
+            cbor_config.define("BUILD_SHARED_LIBS", "OFF");
+            cbor_config.define("WITH_EXAMPLES", "OFF");
+            cbor_config.define("WITH_TESTS", "OFF");
+            cbor_config.define("CMAKE_BUILD_TYPE", "Release");
+            cbor_config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
+            // libcbor defaults to LTO on Release builds unless this is
+            // already set; must disable it (see above).
+            cbor_config
+                .define("CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE", "OFF");
+            // libcbor defaults `CMAKE_SKIP_INSTALL_ALL_DEPENDENCY` to true,
+            // so `cmake --build --target install` (what the `cmake` crate
+            // runs) wouldn't build the library first.
+            cbor_config.define("CMAKE_SKIP_INSTALL_ALL_DEPENDENCY", "OFF");
+            let cbor_dst = cbor_config.build();
+            // Point libyang's CMake config at our freshly built libcbor
+            // (same variables `FindCBOR.cmake` searches), instead of
+            // falling back to a system install.
+            cmake_config.define("CMAKE_INCLUDE_PATH", cbor_dst.join("include"));
+            cmake_config.define(
+                "CMAKE_LIBRARY_PATH",
+                format!(
+                    "{};{}",
+                    cbor_dst.join("lib").display(),
+                    cbor_dst.join("lib64").display()
+                ),
+            );
+            cbor_dst
+        };
 
         if wasm {
             let sdk = wasi_sdk();
@@ -164,7 +211,29 @@ fn main() {
             println!("cargo:rustc-link-lib=static=c-printscan-long-double");
             println!("cargo:rustc-link-lib=static=wasi-emulated-pthread");
         }
+        #[cfg(feature = "cbor")]
+        {
+            // Cargo's default `+bundle` modifier for `static=` native libs
+            // embeds the archive's objects into this crate's rlib, but it
+            // only supports one bundled external static lib per crate
+            // (`yang` already uses it); bundling `cbor` too silently drops
+            // most of its objects. `-bundle` disables that, letting the
+            // plain lib name/search path propagate to the downstream
+            // binary instead (like `-lyang`/`-lpcre2-8` do); `+whole-archive`
+            // forces every member object to be pulled in unconditionally.
+            println!(
+                "cargo:rustc-link-search=native={}/lib",
+                cbor_dst.display()
+            );
+            println!(
+                "cargo:rustc-link-search=native={}/lib64",
+                cbor_dst.display()
+            );
+            println!("cargo:rustc-link-lib=static:-bundle,+whole-archive=cbor");
+        }
         println!("cargo:rerun-if-changed=libyang");
+        #[cfg(feature = "cbor")]
+        println!("cargo:rerun-if-changed=libcbor");
     }
 
     #[cfg(feature = "bindgen")]

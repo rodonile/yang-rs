@@ -25,3 +25,7 @@ bindgen = ["dep:bindgen"]
 # Bundle libyang5 C files into a static archive linked to this crate.
 # This removes the libyang5 dynamic link dependency.
 bundled = ["dep:cmake"]
+# Enable libyang5's CBOR data format support when building with `bundled`.
+# Requires libcbor to be installed on the build system (found via
+# pkg-config) and statically links it. Has no effect without `bundled`.
+cbor = []

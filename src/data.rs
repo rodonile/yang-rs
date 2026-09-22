@@ -80,6 +80,17 @@ pub enum DataFormat {
     JSON = ffi::LYD_FORMAT::LYD_JSON,
     /// LYB instance data format.
     LYB = ffi::LYD_FORMAT::LYD_LYB,
+    /// CBOR instance data format, as specified by
+    /// [RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254).
+    ///
+    /// # Note
+    /// Requires libyang to have been built with `libcbor` support, and is
+    /// currently only supported for whole data trees (e.g.
+    /// [`DataTree::parse_string`]/[`Data::print_bytes`]), not for
+    /// RPC/action/notification operation data
+    /// ([`DataTree::parse_op_string`]), since libyang does not yet provide a
+    /// binary-safe memory parsing function for operations.
+    CBOR = ffi::LYD_FORMAT::LYD_CBOR,
 }
 
 /// Data operation type.
@@ -354,11 +365,11 @@ pub trait Data<'a> {
     /// Print data tree in the specified format to a `String`.
     ///
     /// # Warning
-    /// For printing a data tree in the `DataFormat::LYB` format, use the
-    /// [`Data::print_bytes`] method instead. Using this function with
-    /// `DataFormat::LYB` may result in mangled data because the `LYB` format
-    /// can contain invalid UTF-8 sequences, which cannot be represented in a
-    /// `String`.
+    /// For printing a data tree in the `DataFormat::LYB` or `DataFormat::CBOR`
+    /// formats, use the [`Data::print_bytes`] method instead. Using this
+    /// function with `DataFormat::LYB` or `DataFormat::CBOR` may result in
+    /// mangled data because these are binary formats that can contain invalid
+    /// UTF-8 sequences, which cannot be represented in a `String`.
     fn print_string(
         &self,
         format: DataFormat,
@@ -428,10 +439,10 @@ pub trait Data<'a> {
                 bytes.push(0);
                 bytes
             }
-            DataFormat::LYB => {
-                // Get the length of the LYB data.
+            DataFormat::LYB | DataFormat::CBOR => {
+                // Get the length of the binary data.
                 let len = unsafe { ffi::ly_out_printed(ly_out) };
-                // For the LYB data format, `cstr` isn't null-terminated.
+                // For binary data formats, `cstr` isn't null-terminated.
                 // Create a byte slice from the raw parts and convert it to a
                 // vector.
                 unsafe { std::slice::from_raw_parts(cstr as _, len as _) }
@@ -544,36 +555,78 @@ impl<'a> DataTree<'a> {
     ) -> Result<DataTree<'a>> {
         let mut rnode = std::ptr::null_mut();
         let rnode_ptr = &mut rnode;
+        let data = data.as_ref();
 
-        // Create input handler.
-        let cdata;
-        let mut ly_in = std::ptr::null_mut();
+        // NOTE: `lyd_parse_data_mem_len()` is only used for `CBOR` data.
+        // Despite accepting an explicit length, as of the current libyang
+        // devel snapshot it still initializes its input handler via
+        // `ly_in_new_memory()`, and the legacy XML/JSON parsers scan for a
+        // NUL terminator rather than honoring the configured length. Passing
+        // non-NUL-terminated buffers through it for those formats causes the
+        // parser to read past the end of the buffer (observed as a hang /
+        // pathological CPU spin). XML/JSON keep using NUL-terminated
+        // `CString` buffers, and LYB keeps relying on its own internal
+        // length prefix, exactly as before.
         let ret = match format {
-            DataFormat::XML | DataFormat::JSON => unsafe {
-                cdata = CString::new(data.as_ref()).unwrap();
-                ffi::ly_in_new_memory(cdata.as_ptr() as _, &mut ly_in)
-            },
-            DataFormat::LYB => unsafe {
-                ffi::ly_in_new_memory(data.as_ref().as_ptr() as _, &mut ly_in)
+            DataFormat::XML | DataFormat::JSON => {
+                let cdata = CString::new(data).unwrap();
+                let mut ly_in = std::ptr::null_mut();
+                let ret = unsafe {
+                    ffi::ly_in_new_memory(cdata.as_ptr() as _, &mut ly_in)
+                };
+                if ret != ffi::LY_ERR::LY_SUCCESS {
+                    return Err(Error::new(context));
+                }
+
+                let ret = unsafe {
+                    ffi::lyd_parse_data(
+                        context.raw,
+                        std::ptr::null_mut(),
+                        ly_in,
+                        format as u32,
+                        parser_options.bits(),
+                        validation_options.bits(),
+                        rnode_ptr,
+                    )
+                };
+                unsafe { ffi::ly_in_free(ly_in, 0) };
+                ret
+            }
+            DataFormat::LYB => {
+                let mut ly_in = std::ptr::null_mut();
+                let ret = unsafe {
+                    ffi::ly_in_new_memory(data.as_ptr() as _, &mut ly_in)
+                };
+                if ret != ffi::LY_ERR::LY_SUCCESS {
+                    return Err(Error::new(context));
+                }
+
+                let ret = unsafe {
+                    ffi::lyd_parse_data(
+                        context.raw,
+                        std::ptr::null_mut(),
+                        ly_in,
+                        format as u32,
+                        parser_options.bits(),
+                        validation_options.bits(),
+                        rnode_ptr,
+                    )
+                };
+                unsafe { ffi::ly_in_free(ly_in, 0) };
+                ret
+            }
+            DataFormat::CBOR => unsafe {
+                ffi::lyd_parse_data_mem_len(
+                    context.raw,
+                    data.as_ptr() as _,
+                    data.len() as u32,
+                    format as u32,
+                    parser_options.bits(),
+                    validation_options.bits(),
+                    rnode_ptr,
+                )
             },
         };
-        if ret != ffi::LY_ERR::LY_SUCCESS {
-            return Err(Error::new(context));
-        }
-
-        let ret = unsafe {
-            ffi::lyd_parse_data(
-                context.raw,
-                std::ptr::null_mut(),
-                ly_in,
-                format as u32,
-                parser_options.bits(),
-                validation_options.bits(),
-                rnode_ptr,
-            )
-        };
-        unsafe { ffi::ly_in_free(ly_in, 0) };
-
         if ret != ffi::LY_ERR::LY_SUCCESS {
             return Err(Error::new(context));
         }
@@ -605,6 +658,25 @@ impl<'a> DataTree<'a> {
         parser_options: DataParserFlags,
         op: DataOperation,
     ) -> Result<DataTree<'a>> {
+        // The CBOR format for operation data (RPCs/actions/notifications) is
+        // not currently supported: libyang doesn't provide a binary-safe
+        // memory parsing function for `lyd_parse_op()` (unlike
+        // `lyd_parse_data_mem_len()` for whole data trees), so parsing CBOR
+        // through the NUL-terminated `ly_in_new_memory()` API could silently
+        // truncate or corrupt input containing embedded NUL bytes.
+        if format == DataFormat::CBOR {
+            return Err(Error {
+                errcode: ffi::LY_ERR::LY_EINVAL,
+                msg: Some(
+                    "the CBOR format isn't fully supported by libyang for \
+                     operation data (RPCs/actions/notifications) yet"
+                        .to_owned(),
+                ),
+                path: None,
+                apptag: None,
+            });
+        }
+
         let mut rnode = std::ptr::null_mut();
         let rnode_ptr = &mut rnode;
         // Create input handler.
@@ -618,6 +690,7 @@ impl<'a> DataTree<'a> {
             DataFormat::LYB => unsafe {
                 ffi::ly_in_new_memory(data.as_ref().as_ptr() as _, &mut ly_in)
             },
+            DataFormat::CBOR => unreachable!(),
         };
         if ret != ffi::LY_ERR::LY_SUCCESS {
             return Err(Error::new(context));
