@@ -45,6 +45,27 @@ pub struct SchemaImport<'a> {
     pub(crate) raw: *mut ffi::lysp_import,
 }
 
+/// Semantic version (`ietf-yang-semver` extension) of a module or submodule
+/// at its current revision, in the form MAJOR.MINOR.PATCH(_COMPAT)(-PRE_RELEASE)(+BUILD).
+#[derive(Clone, Debug)]
+pub struct SchemaSemver<'a> {
+    raw: *const ffi::lys_ext_instance_semver,
+    repr: &'a str,
+}
+
+/// Optional COMPAT modifier of a semantic version.
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SchemaSemverCompat {
+    /// No COMPAT modifier.
+    None = ffi::lys_ext_instance_semver_compat::LYS_EXT_SEMVER_COMPAT_NONE,
+    /// COMPAT modifier "compatible".
+    Compatible =
+        ffi::lys_ext_instance_semver_compat::LYS_EXT_SEMVER_COMPAT_COMPATIBLE,
+    /// COMPAT modifier "non_compatible".
+    NonCompatible = ffi::lys_ext_instance_semver_compat::LYS_EXT_SEMVER_COMPAT_NON_COMPATIBLE,
+}
+
 /// Schema input formats accepted by libyang.
 #[allow(clippy::upper_case_acronyms)]
 #[repr(u32)]
@@ -393,6 +414,44 @@ impl<'a> SchemaModule<'a> {
         }
 
         Ok(unsafe { DataTree::from_raw(self.context, rnode) })
+    }
+
+    /// Semantic version (`ietf-yang-semver` extension) of the compiled
+    /// module at its current revision, if any.
+    pub fn semver(&self) -> Option<SchemaSemver<'a>> {
+        let mut semver_str: *const c_char = std::ptr::null();
+        let raw = unsafe { ffi::lys_semver_get(self.raw, &mut semver_str) };
+        if raw.is_null() {
+            return None;
+        }
+
+        Some(SchemaSemver {
+            raw,
+            repr: char_ptr_to_str(semver_str),
+        })
+    }
+
+    /// Semantic version (`ietf-yang-semver` extension) of the module's
+    /// parsed representation at its current revision, if any.
+    ///
+    /// Unlike [`SchemaModule::semver`], this doesn't require the module to
+    /// be compiled.
+    pub fn semver_parsed(&self) -> Option<SchemaSemver<'a>> {
+        let parsed = unsafe { (*self.raw).parsed };
+        if parsed.is_null() {
+            return None;
+        }
+
+        let mut semver_str: *const c_char = std::ptr::null();
+        let raw = unsafe { ffi::lysp_semver_get(parsed, &mut semver_str) };
+        if raw.is_null() {
+            return None;
+        }
+
+        Some(SchemaSemver {
+            raw,
+            repr: char_ptr_to_str(semver_str),
+        })
     }
 
     /// Get YANG submodule of the given name and revision.
@@ -804,6 +863,82 @@ unsafe impl<'a> Binding<'a> for SchemaImport<'a> {
 
 unsafe impl Send for SchemaImport<'_> {}
 unsafe impl Sync for SchemaImport<'_> {}
+
+// ===== impl SchemaSemver =====
+
+impl<'a> SchemaSemver<'a> {
+    /// MAJOR version number.
+    pub fn major(&self) -> i32 {
+        unsafe { (*self.raw).major }
+    }
+
+    /// MINOR version number.
+    pub fn minor(&self) -> i32 {
+        unsafe { (*self.raw).minor }
+    }
+
+    /// PATCH version number.
+    pub fn patch(&self) -> i32 {
+        unsafe { (*self.raw).patch }
+    }
+
+    /// Optional COMPAT version modifier.
+    pub fn compat(&self) -> SchemaSemverCompat {
+        match unsafe { (*self.raw).compat } {
+            ffi::lys_ext_instance_semver_compat::LYS_EXT_SEMVER_COMPAT_COMPATIBLE => {
+                SchemaSemverCompat::Compatible
+            }
+            ffi::lys_ext_instance_semver_compat::LYS_EXT_SEMVER_COMPAT_NON_COMPATIBLE => {
+                SchemaSemverCompat::NonCompatible
+            }
+            _ => SchemaSemverCompat::None,
+        }
+    }
+
+    /// Optional PRE_RELEASE metadata.
+    pub fn pre_release(&self) -> Option<&str> {
+        char_ptr_to_opt_str(unsafe { (*self.raw).pre_release_meta })
+    }
+
+    /// Optional BUILD metadata.
+    pub fn build(&self) -> Option<&str> {
+        char_ptr_to_opt_str(unsafe { (*self.raw).build_meta })
+    }
+
+    /// Canonical string representation
+    /// (`MAJOR.MINOR.PATCH(_COMPAT)(-PRE_RELEASE)(+BUILD)`).
+    pub fn as_str(&self) -> &str {
+        self.repr
+    }
+}
+
+impl PartialEq for SchemaSemver<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
+
+impl Eq for SchemaSemver<'_> {}
+
+impl PartialOrd for SchemaSemver<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for SchemaSemver<'_> {
+    /// Compare 2 semantic versions, ignoring metadata (`PRE_RELEASE`/`BUILD`).
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match unsafe { ffi::lys_semver_cmp(self.raw, other.raw) } {
+            n if n < 0 => std::cmp::Ordering::Less,
+            0 => std::cmp::Ordering::Equal,
+            _ => std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+unsafe impl Send for SchemaSemver<'_> {}
+unsafe impl Sync for SchemaSemver<'_> {}
 
 // ===== impl SchemaNode =====
 
