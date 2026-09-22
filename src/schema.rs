@@ -563,6 +563,15 @@ impl SchemaSubmodule<'_> {
         self.raw
     }
 
+    /// Returns the latest revision of the submodule, if any.
+    ///
+    /// Since a submodule's revision list isn't guaranteed to be ordered,
+    /// this uses libyang's own helper to determine the latest one instead of
+    /// reading the first entry of the revision list directly.
+    pub fn revision(&self) -> Option<&str> {
+        char_ptr_to_opt_str(unsafe { ffi::lysp_submodule_revision(self.raw) })
+    }
+
     /// Print schema tree in the specified format into a string.
     pub fn print_string(
         &self,

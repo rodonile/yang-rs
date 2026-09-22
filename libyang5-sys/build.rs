@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 // Revision of the libyang submodule the pre-generated bindings were taken from.
 #[allow(dead_code)]
-const LIBYANG_REV: &str = "f302d86cd6083c2bfe16fc2122bc6d4be69ce7a2";
+const LIBYANG_REV: &str = "70f8e6a1db4a01de817d4a2b35a73e9f6c638c0c";
 
 // Root of the WASI SDK, holding the sysroot and the CMake toolchain file used
 // to cross-compile libyang and its dependencies to WebAssembly.
@@ -263,7 +263,8 @@ fn main() {
             // no use from Rust, and keeping them would tie the pre-generated
             // bindings to the machine they were generated on.
             .blocklist_item("LYPLG_TYPE_DIR")
-            .blocklist_item("LYPLG_EXT_DIR");
+            .blocklist_item("LYPLG_EXT_DIR")
+            .blocklist_item("LY_YANG_MODULE_DIR");
         for path in &include_paths {
             builder = builder.clang_arg(format!("-I{}", path.display()));
         }

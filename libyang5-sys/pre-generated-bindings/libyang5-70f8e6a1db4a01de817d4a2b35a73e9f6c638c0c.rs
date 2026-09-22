@@ -169,7 +169,6 @@ pub const LY_LOSTORE_LAST: u32 = 6;
 pub const LY_LDGDICT: u32 = 1;
 pub const LY_LDGXPATH: u32 = 2;
 pub const LY_LDGDEPSETS: u32 = 4;
-pub const LY_PRI_ARRAY_COUNT_TYPE: &[u8; 3] = b"lu\0";
 pub const LY_DATA_TYPE_COUNT: u32 = 20;
 pub const LY_REV_SIZE: u32 = 11;
 pub const LYS_UNKNOWN: u32 = 0;
@@ -269,6 +268,7 @@ pub const LYD_DEFAULT: u32 = 1;
 pub const LYD_WHEN_TRUE: u32 = 2;
 pub const LYD_NEW: u32 = 4;
 pub const LYD_EXT: u32 = 8;
+pub const LYD_WHEN_FALSE: u32 = 16;
 pub const LYD_HT_MIN_ITEMS: u32 = 4;
 pub const LYD_VALHINT_STRING: u32 = 1;
 pub const LYD_VALHINT_DECNUM: u32 = 2;
@@ -327,6 +327,7 @@ pub const LY_CTX_LEAFREF_EXTENDED: u32 = 2048;
 pub const LY_CTX_LEAFREF_LINKING: u32 = 4096;
 pub const LY_CTX_BUILTIN_PLUGINS_ONLY: u32 = 8192;
 pub const LY_CTX_STATIC_PLUGINS_ONLY: u32 = 16384;
+pub const LYA_PRI_COUNT_T: &[u8; 3] = b"lu\0";
 pub const LYD_PARSE_ONLY: u32 = 65536;
 pub const LYD_PARSE_STRICT: u32 = 131072;
 pub const LYD_PARSE_OPAQ: u32 = 262144;
@@ -353,6 +354,7 @@ pub const LYS_COMPILE_GROUPING: u32 = 1;
 pub const LYS_COMPILE_DISABLED: u32 = 2;
 pub const LYS_COMPILE_NO_CONFIG: u32 = 4;
 pub const LYS_COMPILE_NO_DISABLED: u32 = 8;
+pub const LYS_COMPILE_LOCAL_ONLY: u32 = 16;
 pub const LYS_COMPILE_RPC_INPUT: u32 = 4100;
 pub const LYS_COMPILE_RPC_OUTPUT: u32 = 8196;
 pub const LYS_COMPILE_NOTIFICATION: u32 = 16388;
@@ -565,10 +567,12 @@ pub mod LY_VECODE {
     pub const LYVE_SYNTAX_XML: Type = 7;
     #[doc = "< JSON-related syntax error"]
     pub const LYVE_SYNTAX_JSON: Type = 8;
+    #[doc = "< CBOR-related syntax error"]
+    pub const LYVE_SYNTAX_CBOR: Type = 9;
     #[doc = "< YANG data does not reflect some of the module restrictions"]
-    pub const LYVE_DATA: Type = 9;
+    pub const LYVE_DATA: Type = 10;
     #[doc = "< Unknown error"]
-    pub const LYVE_OTHER: Type = 10;
+    pub const LYVE_OTHER: Type = 11;
 }
 #[doc = " @brief Libyang full error structure."]
 #[repr(C)]
@@ -729,71 +733,9 @@ unsafe extern "C" {
         format: *mut LYS_INFORMAT::Type,
     ) -> LY_ERR::Type;
 }
-pub mod LY_DATA_TYPE {
-    #[doc = " @brief YANG built-in types"]
-    pub type Type = ::std::os::raw::c_uint;
-    #[doc = "< Unknown type"]
-    pub const LY_TYPE_UNKNOWN: Type = 0;
-    #[doc = "< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8))"]
-    pub const LY_TYPE_BINARY: Type = 1;
-    #[doc = "< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_UINT8: Type = 2;
-    #[doc = "< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_UINT16: Type = 3;
-    #[doc = "< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_UINT32: Type = 4;
-    #[doc = "< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_UINT64: Type = 5;
-    #[doc = "< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4))"]
-    pub const LY_TYPE_STRING: Type = 6;
-    #[doc = "< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7))"]
-    pub const LY_TYPE_BITS: Type = 7;
-    #[doc = "< \"true\" or \"false\" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5))"]
-    pub const LY_TYPE_BOOL: Type = 8;
-    #[doc = "< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))"]
-    pub const LY_TYPE_DEC64: Type = 9;
-    #[doc = "< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11))"]
-    pub const LY_TYPE_EMPTY: Type = 10;
-    #[doc = "< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6))"]
-    pub const LY_TYPE_ENUM: Type = 11;
-    #[doc = "< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10))"]
-    pub const LY_TYPE_IDENT: Type = 12;
-    #[doc = "< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13))"]
-    pub const LY_TYPE_INST: Type = 13;
-    #[doc = "< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))"]
-    pub const LY_TYPE_LEAFREF: Type = 14;
-    #[doc = "< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12))"]
-    pub const LY_TYPE_UNION: Type = 15;
-    #[doc = "< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_INT8: Type = 16;
-    #[doc = "< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_INT16: Type = 17;
-    #[doc = "< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_INT32: Type = 18;
-    #[doc = "< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
-    pub const LY_TYPE_INT64: Type = 19;
-}
 unsafe extern "C" {
-    #[doc = " @brief Stringfield YANG built-in data types"]
-    pub static mut ly_data_type2str: [*const ::std::os::raw::c_char; 20usize];
-}
-pub mod LY_VALUE_FORMAT {
-    #[doc = " @brief All kinds of supported value formats and prefix mappings to modules."]
-    pub type Type = ::std::os::raw::c_uint;
-    #[doc = "< canonical value, prefix mapping is type-specific"]
-    pub const LY_VALUE_CANON: Type = 0;
-    #[doc = "< YANG schema value, prefixes map to YANG import prefixes"]
-    pub const LY_VALUE_SCHEMA: Type = 1;
-    #[doc = "< resolved YANG schema value, prefixes map to module structures directly"]
-    pub const LY_VALUE_SCHEMA_RESOLVED: Type = 2;
-    #[doc = "< XML data value, prefixes map to XML namespace prefixes"]
-    pub const LY_VALUE_XML: Type = 3;
-    #[doc = "< JSON data value, prefixes map to module names"]
-    pub const LY_VALUE_JSON: Type = 4;
-    #[doc = "< LYB data binary value, prefix mapping is type-specific (but usually like JSON)"]
-    pub const LY_VALUE_LYB: Type = 5;
-    #[doc = "< any data format value, prefixes map to XML namespace prefixes"]
-    pub const LY_VALUE_STR_NS: Type = 6;
+    #[doc = " @brief Get the directory with internal libyang YANG modules.\n\n @return YANG module dir."]
+    pub fn ly_yang_module_dir() -> *const ::std::os::raw::c_char;
 }
 pub type FILE = _IO_FILE;
 #[repr(C)]
@@ -916,6 +858,134 @@ impl Default for _IO_FILE {
             s.assume_init()
         }
     }
+}
+pub mod LY_DATA_TYPE {
+    #[doc = " @brief YANG built-in types"]
+    pub type Type = ::std::os::raw::c_uint;
+    #[doc = "< Unknown type"]
+    pub const LY_TYPE_UNKNOWN: Type = 0;
+    #[doc = "< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8))"]
+    pub const LY_TYPE_BINARY: Type = 1;
+    #[doc = "< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_UINT8: Type = 2;
+    #[doc = "< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_UINT16: Type = 3;
+    #[doc = "< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_UINT32: Type = 4;
+    #[doc = "< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_UINT64: Type = 5;
+    #[doc = "< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4))"]
+    pub const LY_TYPE_STRING: Type = 6;
+    #[doc = "< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7))"]
+    pub const LY_TYPE_BITS: Type = 7;
+    #[doc = "< \"true\" or \"false\" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5))"]
+    pub const LY_TYPE_BOOL: Type = 8;
+    #[doc = "< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))"]
+    pub const LY_TYPE_DEC64: Type = 9;
+    #[doc = "< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11))"]
+    pub const LY_TYPE_EMPTY: Type = 10;
+    #[doc = "< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6))"]
+    pub const LY_TYPE_ENUM: Type = 11;
+    #[doc = "< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10))"]
+    pub const LY_TYPE_IDENT: Type = 12;
+    #[doc = "< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13))"]
+    pub const LY_TYPE_INST: Type = 13;
+    #[doc = "< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))"]
+    pub const LY_TYPE_LEAFREF: Type = 14;
+    #[doc = "< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12))"]
+    pub const LY_TYPE_UNION: Type = 15;
+    #[doc = "< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_INT8: Type = 16;
+    #[doc = "< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_INT16: Type = 17;
+    #[doc = "< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_INT32: Type = 18;
+    #[doc = "< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2))"]
+    pub const LY_TYPE_INT64: Type = 19;
+}
+unsafe extern "C" {
+    #[doc = " @brief Stringfield YANG built-in data types"]
+    pub static mut ly_data_type2str: [*const ::std::os::raw::c_char; 20usize];
+}
+pub mod LY_VALUE_FORMAT {
+    #[doc = " @brief All kinds of supported value formats and prefix mappings to modules."]
+    pub type Type = ::std::os::raw::c_uint;
+    #[doc = "< canonical value, prefix mapping is type-specific"]
+    pub const LY_VALUE_CANON: Type = 0;
+    #[doc = "< YANG schema value, prefixes map to YANG import prefixes"]
+    pub const LY_VALUE_SCHEMA: Type = 1;
+    #[doc = "< resolved YANG schema value, prefixes map to module structures directly"]
+    pub const LY_VALUE_SCHEMA_RESOLVED: Type = 2;
+    #[doc = "< XML data value, prefixes map to XML namespace prefixes"]
+    pub const LY_VALUE_XML: Type = 3;
+    #[doc = "< JSON data value, prefixes map to module names"]
+    pub const LY_VALUE_JSON: Type = 4;
+    #[doc = "< CBOR data value, prefixes map to module names (same as JSON)"]
+    pub const LY_VALUE_CBOR: Type = 5;
+    #[doc = "< LYB data binary value, prefix mapping is type-specific (but usually like JSON)"]
+    pub const LY_VALUE_LYB: Type = 6;
+    #[doc = "< any data format value, prefixes map to XML namespace prefixes"]
+    pub const LY_VALUE_STR_NS: Type = 7;
+}
+unsafe extern "C" {
+    #[doc = " @brief Check a string matches an XML Schema regex used in YANG.\n\n @param[in] ctx Optional context for storing errors.\n @param[in] pattern Regular expression pattern to use.\n @param[in] string String to match.\n @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.\n @param[in,out] pat_comp Optional pointer to pattern code. If set and NULL, it is returned. If set and non-NULL, it is\n used directly for matching instead of compiling @p pattern. Free it using ::ly_pattern_free().\n @return LY_SUCCESS on a match;\n @return LY_ENOT if the string does not match;\n @return LY_ERR on error."]
+    pub fn ly_pattern_match(
+        ctx: *const ly_ctx,
+        pattern: *const ::std::os::raw::c_char,
+        string: *const ::std::os::raw::c_char,
+        str_len: u32,
+        pat_comp: *mut *mut ::std::os::raw::c_void,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Compile an XML Schema regex pattern prior to matching.\n\n @param[in] ctx Optional context for storing errors.\n @param[in] pattern Regular expression pattern to use.\n @param[out] pat_comp Compiled @p pattern to be used by ::ly_pattern_match(). Free it using ::ly_pattern_free().\n @return LY_SUCCESS on success;\n @return LY_ERR on error."]
+    pub fn ly_pattern_compile(
+        ctx: *const ly_ctx,
+        pattern: *const ::std::os::raw::c_char,
+        pat_comp: *mut *mut ::std::os::raw::c_void,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Free a compiled XML Schema regex pattern.\n\n @param[in] pat_comp Compiled pattern to free."]
+    pub fn ly_pattern_free(pat_comp: *mut ::std::os::raw::c_void);
+}
+unsafe extern "C" {
+    #[doc = " @brief Get current timezone (including DST setting) UTC (GMT) time offset in seconds.\n\n @return Timezone shift in seconds."]
+    pub fn ly_time_tz_offset() -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " @brief Get UTC (GMT) timezone offset in seconds at a specific timestamp (including DST setting).\n\n @param[in] time Timestamp to get the offset at.\n @return Timezone shift in seconds."]
+    pub fn ly_time_tz_offset_at(time: time_t) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    #[doc = " @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.\n\n @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).\n @param[out] time UNIX timestamp.\n @param[out] fractions_s Optional fractions of a second, set to NULL if none.\n @return LY_ERR value."]
+    pub fn ly_time_str2time(
+        value: *const ::std::os::raw::c_char,
+        time: *mut time_t,
+        fractions_s: *mut *mut ::std::os::raw::c_char,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.\n\n @param[in] time UNIX timestamp.\n @param[in] fractions_s Fractions of a second, if any.\n @param[out] str String date-and-time value in the local timezone.\n @return LY_ERR value."]
+    pub fn ly_time_time2str(
+        time: time_t,
+        fractions_s: *const ::std::os::raw::c_char,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Convert date-and-time from string to timespec.\n\n @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).\n @param[out] ts Timespec.\n @return LY_ERR value."]
+    pub fn ly_time_str2ts(
+        value: *const ::std::os::raw::c_char,
+        ts: *mut timespec,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Convert timespec into date-and-time string value.\n\n @param[in] ts Timespec.\n @param[out] str String date-and-time value in the local timezone.\n @return LY_ERR value."]
+    pub fn ly_time_ts2str(
+        ts: *const timespec,
+        str_: *mut *mut ::std::os::raw::c_char,
+    ) -> LY_ERR::Type;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3889,7 +3959,7 @@ pub mod LYS_VERSION {
 pub struct lysp_module {
     #[doc = "< covering module structure"]
     pub mod_: *mut lys_module,
-    #[doc = "< list of the module revisions ([sized array](@ref sizedarrays)), the first revision\nin the list is always the last (newest) revision of the module"]
+    #[doc = "< list of the module revisions ([sized array](@ref sizedarrays))"]
     pub revs: *mut lysp_revision,
     #[doc = "< list of imported modules ([sized array](@ref sizedarrays))"]
     pub imports: *mut lysp_import,
@@ -4068,7 +4138,7 @@ impl lysp_module {
 pub struct lysp_submodule {
     #[doc = "< belongs to parent module (submodule - mandatory)"]
     pub mod_: *mut lys_module,
-    #[doc = "< list of the module revisions ([sized array](@ref sizedarrays)), the first revision\nin the list is always the last (newest) revision of the module"]
+    #[doc = "< list of the module revisions ([sized array](@ref sizedarrays)),\nuse ::lysp_submodule_revision() to get the latest one"]
     pub revs: *mut lysp_revision,
     #[doc = "< list of imported modules ([sized array](@ref sizedarrays))"]
     pub imports: *mut lysp_import,
@@ -6197,7 +6267,7 @@ impl Default for lysc_node_container {
 #[derive(Copy, Clone)]
 pub struct lysc_node_case {
     pub __bindgen_anon_1: lysc_node_case__bindgen_ty_1,
-    #[doc = "< first child node of the case (linked list). Note that all the children of all the sibling cases are linked\neach other as siblings with the parent pointer pointing to appropriate case node."]
+    #[doc = "< first child node of the case (linked list)"]
     pub child: *mut lysc_node,
     #[doc = "< list of pointers to when statements ([sized array](@ref sizedarrays))"]
     pub when: *mut *mut lysc_when,
@@ -7369,6 +7439,12 @@ unsafe extern "C" {
     pub fn lysp_node_child(node: *const lysp_node) -> *const lysp_node;
 }
 unsafe extern "C" {
+    #[doc = " @brief Get the last revision of a submodule.\n\n @param[in] submod Submodule to use.\n @return Last revision of @p submod;\n @return NULL if @p submod has no revisions."]
+    pub fn lysp_submodule_revision(
+        submod: *const lysp_submodule,
+    ) -> *const ::std::os::raw::c_char;
+}
+unsafe extern "C" {
     #[doc = " @brief Get the actions/RPCs linked list of the given (compiled) schema node.\n Decides the node's type and in case it has a actions/RPCs array, returns it.\n @param[in] node Node to examine.\n @return The node's actions/RPCs linked list if any, NULL otherwise."]
     pub fn lysc_node_actions(node: *const lysc_node)
     -> *const lysc_node_action;
@@ -7767,6 +7843,17 @@ unsafe extern "C" {
     ) -> LY_ERR::Type;
 }
 unsafe extern "C" {
+    #[doc = " @brief Compare 2 revisions of a module and generate their schema diff. Requires 'ietf-yang-schema-comparison'\n YANG module to be loaded.\n\n Either @p gen_local or @p gen_full must be set, or both.\n\n If @p gen_local is set, ::LY_CTX_SET_PRIV_PARSED option must be set for **both** @p src_mod and @p trg_mod contexts.\n\n @param[in] ctx Context to use for creating the schema diff data tree.\n @param[in] src_mod Source implemented module to compare.\n @param[in] trg_mod Target implemented module to compare.\n @param[in] gen_local Set if comparison with locally resolved modules should be performed.\n @param[in] gen_full Set if comparison with fully resolved schemas should be performed.\n @param[out] schema_diff Generated schema diff tree.\n @return LY_SUCCESS on success.\n @return LY_ERR value on error."]
+    pub fn lys_compare(
+        ctx: *const ly_ctx,
+        src_mod: *const lys_module,
+        trg_mod: *const lys_module,
+        gen_local: ly_bool,
+        gen_full: ly_bool,
+        schema_diff: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
     #[doc = " @brief Stringify schema nodetype.\n\n @param[in] nodetype Nodetype to stringify.\n @return Constant string with the name of the node's type."]
     pub fn lys_nodetype2str(nodetype: u16) -> *const ::std::os::raw::c_char;
 }
@@ -7775,6 +7862,43 @@ unsafe extern "C" {
     pub fn lyxp_get_expr(
         path: *const lyxp_expr,
     ) -> *const ::std::os::raw::c_char;
+}
+pub mod LYS_SID_FILE_STATUS {
+    #[doc = " @brief Status of a generated .sid file, mirroring the 'sid-file-status' leaf\n from ietf-sid-file (RFC 9595, sec. 4)."]
+    pub type Type = ::std::os::raw::c_uint;
+    #[doc = "< work-in-progress file, items have status 'unstable'"]
+    pub const LYS_SID_FILE_UNPUBLISHED: Type = 0;
+    #[doc = "< stable file, does not contain 'unstable' items"]
+    pub const LYS_SID_FILE_PUBLISHED: Type = 1;
+}
+unsafe extern "C" {
+    #[doc = " @brief Generate a .sid file content of a module as an ietf-sid-file data tree.\n\n @note For complete SID coverage, all features of @p module must be enabled\n before calling this function. Schema nodes guarded by `if-feature` that are\n not enabled are absent from the compiled tree and will not be collected.\n\n @param[in] module Implemented module to collect items from. Its context must have the \"ietf-sid-file\" module implemented.\n @param[in] entry_point First SID of the assignment range.\n @param[in] size Number of SIDs available in the range, must cover all items.\n @param[in] status Status of the SID file (::LYS_SID_FILE_UNPUBLISHED or ::LYS_SID_FILE_PUBLISHED).\n When ::LYS_SID_FILE_UNPUBLISHED, every item gets status \"unstable\"; a published file\n contains no \"unstable\" items.\n @param[in] description Optional description string written to the \"description\" leaf, NULL to auto-generate\n \"Generated by libyang \\<version\\>, at \\<UTC timestamp\\>\".\n @param[out] sid_file Generated data tree (\"/ietf-sid-file:sid-file\"), caller must free with ::lyd_free_all().\n @return LY_SUCCESS on success.\n @return LY_EINVAL if @p module is not implemented, @p size is zero or smaller than the number of collected items, @p module or @p sid_file is NULL.\n @return LY_ENOTFOUND if \"ietf-sid-file\" is not implemented in the module's context.\n @return LY_ERR on other errors."]
+    pub fn lys_sid_gen(
+        module: *const lys_module,
+        entry_point: u64,
+        size: u64,
+        status: LYS_SID_FILE_STATUS::Type,
+        description: *const ::std::os::raw::c_char,
+        sid_file: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Update a .sid file content of a module from a previous .sid file.\n\n Merges items from the previous .sid file with items collected from the current\n compiled schema. Items that still exist keep their previously assigned SIDs and\n statuses; new items get the first SID after the highest used SID in each\n assignment range; items that no longer exist in the schema are retained with\n status \"obsolete\" (RFC 9595 The sid-file-version is incremented by 1.\n\n @note For complete SID coverage, all features of @p module must be enabled\n before calling this function. Schema nodes guarded by `if-feature` that are\n not enabled are absent from the compiled tree and will not be collected.\n\n @param[in] module Implemented module to collect items from. Its context must have the \"ietf-sid-file\" module implemented.\n @param[in] prev_sid_file Root node of the previous .sid file data tree (parsed from JSON with ::lyd_parse_data_mem).\n @param[in] status Status of the SID file (::LYS_SID_FILE_UNPUBLISHED or ::LYS_SID_FILE_PUBLISHED).\n When ::LYS_SID_FILE_PUBLISHED, all \"unstable\" item statuses are stripped (set to the default \"stable\");\n \"obsolete\" statuses are always preserved.\n @param[in] description Optional description string written to the \"description\" leaf, NULL to auto-generate\n \"Generated by libyang \\<version\\>, at \\<UTC timestamp\\>\".\n @param[out] sid_file Generated data tree (\"/ietf-sid-file:sid-file\"), caller must free with ::lyd_free_all().\n @return LY_SUCCESS on success.\n @return LY_EINVAL if @p module is not implemented, or on invalid previous file content (module name mismatch, SID outside any range, no free SID left),\n or @p module, @p prev_sid_file, or @p sid_file is NULL.\n @return LY_ENOTFOUND if \"ietf-sid-file\" is not implemented in the module's context.\n @return LY_ERR on other errors."]
+    pub fn lys_sid_update(
+        module: *const lys_module,
+        prev_sid_file: *const lyd_node,
+        status: LYS_SID_FILE_STATUS::Type,
+        description: *const ::std::os::raw::c_char,
+        sid_file: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Append a new assignment range to an existing .sid file data tree.\n\n The range is appended directly into @p sid_file (in place).\n\n @param[in] sid_file Data tree (\"/ietf-sid-file:sid-file\") to add the range to.\n @param[in] entry_point First SID of the new range.\n @param[in] size Number of SIDs in the new range, must be non-zero.\n @return LY_SUCCESS on success.\n @return LY_EINVAL if @p sid_file is NULL.\n @return LY_EINVAL if @p size is zero, @p sid_file does not have the sid-file\n root node, the range exceeds the SID data type bounds, the existing ranges\n miss required data, or the range overlaps an existing one.\n @return LY_ERR on other errors."]
+    pub fn lys_sid_range_add(
+        sid_file: *mut lyd_node,
+        entry_point: u64,
+        size: u64,
+    ) -> LY_ERR::Type;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -7797,6 +7921,8 @@ pub mod LYD_FORMAT {
     pub const LYD_JSON: Type = 2;
     #[doc = "< LYB instance data format"]
     pub const LYD_LYB: Type = 3;
+    #[doc = "< CBOR instance data format"]
+    pub const LYD_CBOR: Type = 4;
 }
 #[doc = " @brief YANG data representation"]
 #[repr(C)]
@@ -9218,6 +9344,31 @@ unsafe extern "C" {
     ) -> LY_ERR::Type;
 }
 unsafe extern "C" {
+    #[doc = " @brief Create a new term node in the data tree and set its value directly in its internal raw representation.\n\n This function skips value parsing from its string representation but should be used only by advanced users.\n Providing incorrect @p value_ptr will likely result in an undefined behavior. For example, if the node being\n created is a `uint32` YANG type, @p value_ptr must be a pointer to `uint32_t` and @p value_size `sizeof(uint32_t)`.\n Or, if the node is a `inet:ipv4-address`, @p value_ptr is a pointer to ::lyd_value_ipv4_address variable and\n @p value_size is `sizeof(struct lyd_value_ipv4_address)`.\n\n To spend @p value_ptr, @p options may include ::LYD_NEW_ANY_USE_VALUE. Presence of this option makes no difference\n for values without nested pointers (but may somewhat improve the performance).\n\n @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.\n @param[in] module Module of the node being created. If NULL, @p parent module will be used.\n @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.\n @param[in] value_ptr Pointer to the raw value of the node, specific ::lyd_value union member for the node type expected.\n @param[in] value_size Size of @p value_ptr target in bytes.\n @param[in] canon Canonical @p value_ptr value string.\n @param[in] options Bitmask of options, see @ref newvaloptions.\n @param[out] node Optional created node.\n @return LY_ERR value."]
+    pub fn lyd_new_term_raw_canon(
+        parent: *mut lyd_node,
+        module: *const lys_module,
+        name: *const ::std::os::raw::c_char,
+        value_ptr: *const ::std::os::raw::c_void,
+        value_size: u32,
+        canon: *const ::std::os::raw::c_char,
+        options: u32,
+        node: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Deprecated, use ::lyd_new_term_raw_canon() instead. Produces nodes without canonical values."]
+    pub fn lyd_new_term_raw(
+        parent: *mut lyd_node,
+        module: *const lys_module,
+        name: *const ::std::os::raw::c_char,
+        value_ptr: *const ::std::os::raw::c_void,
+        value_size: u32,
+        options: u32,
+        node: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
     #[doc = " @brief Create a new any node in the data tree.\n\n @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.\n @param[in] module Module of the node being created. If NULL, @p parent module will be used.\n @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.\n @param[in] child Data tree value of the node, not set if @p value is set.\n @param[in] value String value for the node, not set if @p child is set.\n @param[in] hints String @p value hints (@ref lydvalhints or @ref lydnodehints), if any.\n @param[in] options Bitmask of options, see @ref newvaloptions.\n @param[out] node Optional created node.\n @return LY_ERR value."]
     pub fn lyd_new_any(
         parent: *mut lyd_node,
@@ -9831,44 +9982,6 @@ unsafe extern "C" {
     ) -> LY_ERR::Type;
 }
 unsafe extern "C" {
-    #[doc = " @brief Get current timezone (including DST setting) UTC (GMT) time offset in seconds.\n\n @return Timezone shift in seconds."]
-    pub fn ly_time_tz_offset() -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    #[doc = " @brief Get UTC (GMT) timezone offset in seconds at a specific timestamp (including DST setting).\n\n @param[in] time Timestamp to get the offset at.\n @return Timezone shift in seconds."]
-    pub fn ly_time_tz_offset_at(time: time_t) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
-    #[doc = " @brief Convert date-and-time from string to UNIX timestamp and fractions of a second.\n\n @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).\n @param[out] time UNIX timestamp.\n @param[out] fractions_s Optional fractions of a second, set to NULL if none.\n @return LY_ERR value."]
-    pub fn ly_time_str2time(
-        value: *const ::std::os::raw::c_char,
-        time: *mut time_t,
-        fractions_s: *mut *mut ::std::os::raw::c_char,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Convert UNIX timestamp and fractions of a second into canonical date-and-time string value.\n\n @param[in] time UNIX timestamp.\n @param[in] fractions_s Fractions of a second, if any.\n @param[out] str String date-and-time value in the local timezone.\n @return LY_ERR value."]
-    pub fn ly_time_time2str(
-        time: time_t,
-        fractions_s: *const ::std::os::raw::c_char,
-        str_: *mut *mut ::std::os::raw::c_char,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Convert date-and-time from string to timespec.\n\n @param[in] value Valid string date-and-time value, the string may continue after the value (be longer).\n @param[out] ts Timespec.\n @return LY_ERR value."]
-    pub fn ly_time_str2ts(
-        value: *const ::std::os::raw::c_char,
-        ts: *mut timespec,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Convert timespec into date-and-time string value.\n\n @param[in] ts Timespec.\n @param[out] str String date-and-time value in the local timezone.\n @return LY_ERR value."]
-    pub fn ly_time_ts2str(
-        ts: *const timespec,
-        str_: *mut *mut ::std::os::raw::c_char,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
     #[doc = " @brief Gets the leafref links record for given node\n\n This API requires usage of ::LY_CTX_LEAFREF_LINKING context flag.\n\n @param[in] node The term data node.\n @param[out] record The leafref links record\n @return LY_SUCCESS on success.\n @return LY_ERR value on error."]
     pub fn lyd_leafref_get_links(
         node: *const lyd_node_term,
@@ -9880,29 +9993,7 @@ unsafe extern "C" {
     pub fn lyd_leafref_link_node_tree(tree: *const lyd_node) -> LY_ERR::Type;
 }
 unsafe extern "C" {
-    #[doc = " @brief Check a string matches an XML Schema regex used in YANG.\n\n @param[in] ctx Optional context for storing errors.\n @param[in] pattern Regular expression pattern to use.\n @param[in] string String to match.\n @param[in] str_len Length of @p string, may be 0 if string is 0-terminated.\n @param[in,out] pat_comp Optional pointer to pattern code. If set and NULL, it is returned. If set and non-NULL, it is\n used directly for matching instead of compiling @p pattern. Free it using ::ly_pattern_free().\n @return LY_SUCCESS on a match;\n @return LY_ENOT if the string does not match;\n @return LY_ERR on error."]
-    pub fn ly_pattern_match(
-        ctx: *const ly_ctx,
-        pattern: *const ::std::os::raw::c_char,
-        string: *const ::std::os::raw::c_char,
-        str_len: u32,
-        pat_comp: *mut *mut ::std::os::raw::c_void,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Compile an XML Schema regex pattern prior to matching.\n\n @param[in] ctx Optional context for storing errors.\n @param[in] pattern Regular expression pattern to use.\n @param[out] pat_comp Compiled @p pattern to be used by ::ly_pattern_match(). Free it using ::ly_pattern_free().\n @return LY_SUCCESS on success;\n @return LY_ERR on error."]
-    pub fn ly_pattern_compile(
-        ctx: *const ly_ctx,
-        pattern: *const ::std::os::raw::c_char,
-        pat_comp: *mut *mut ::std::os::raw::c_void,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Free a compiled XML Schema regex pattern.\n\n @param[in] pat_comp Compiled pattern to free."]
-    pub fn ly_pattern_free(pat_comp: *mut ::std::os::raw::c_void);
-}
-unsafe extern "C" {
-    #[doc = " @brief Create libyang context.\n\n Context is used to hold all information about schemas. Usually, the application is supposed\n to work with a single context in which libyang is holding all schemas (and other internal\n information) according to which the data trees will be processed and validated. So, the schema\n trees are tightly connected with the specific context and they are held by the context internally\n - caller does not need to keep pointers to the schemas returned by ::lys_parse(), context knows\n about them. The data trees created with \\b lyd_parse_*() are still connected with the specific context,\n but they are not internally held by the context. The data tree just points and lean on some data\n held by the context (schema tree, string dictionary, etc.). Therefore, in case of data trees, caller\n is supposed to keep pointers returned by the \\b lyd_parse_*() functions and manage the data tree on its own. This\n also affects the number of instances of both tree types. While you can have only one instance of\n specific schema connected with a single context, number of data tree instances is not connected.\n\n @param[in] search_dir Directory (or directories) where libyang will search for the imported or included modules\n and submodules. If no such directory is available, NULL is accepted. Several directories can be specified,\n delimited by colon \":\" (on Windows, use semicolon \";\" instead).\n @param[in] options Context options, see @ref contextoptions.\n @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.\n @return LY_ERR return value."]
+    #[doc = " @brief Create libyang context.\n\n Context is used to hold all information about schemas. Usually, the application is supposed\n to work with a single context in which libyang is holding all schemas (and other internal\n information) according to which the data trees will be processed and validated. So, the schema\n trees are tightly connected with the specific context and they are held by the context internally\n - caller does not need to keep pointers to the schemas returned by ::lys_parse(), context knows\n about them. The data trees created with @b lyd_parse_*() are still connected with the specific context,\n but they are not internally held by the context. The data tree just points and lean on some data\n held by the context (schema tree, string dictionary, etc.). Therefore, in case of data trees, caller\n is supposed to keep pointers returned by the @b lyd_parse_*() functions and manage the data tree on its own. This\n also affects the number of instances of both tree types. While you can have only one instance of\n specific schema connected with a single context, number of data tree instances is not connected.\n\n @param[in] search_dir Directory (or directories) where libyang will search for the imported or included modules,\n separated by colon \":\" (on Windows, use semicolon \";\" instead). At least ::ly_yang_module_dir() should be passed\n for the internal modules to be found.\n @param[in] options Context options, see @ref contextoptions.\n @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.\n @return LY_ERR return value."]
     pub fn ly_ctx_new(
         search_dir: *const ::std::os::raw::c_char,
         options: u32,
@@ -10253,18 +10344,34 @@ unsafe extern "C" {
     pub fn ly_in_file(in_: *mut ly_in, f: *mut FILE) -> *mut FILE;
 }
 unsafe extern "C" {
-    #[doc = " @brief Create input handler using memory to read data.\n\n @param[in] str Pointer where to start reading data. The input data are expected to be NULL-terminated.\n Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),\n so if it is really a static string, do not use the destroy argument!\n @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.\n @return LY_SUCCESS in case of success\n @return LY_ERR value in case of failure."]
+    #[doc = " @brief Create input handler using memory to read data.\n\n The input data are expected to be valid (NULL-terminated for text formats).\n Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),\n so if @p str is a static string, do not use the destroy argument!\n\n @param[in] str Data to read.\n @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.\n @return LY_SUCCESS in case of success\n @return LY_ERR value in case of failure."]
     pub fn ly_in_new_memory(
         str_: *const ::std::os::raw::c_char,
         in_: *mut *mut ly_in,
     ) -> LY_ERR::Type;
 }
 unsafe extern "C" {
-    #[doc = " @brief Get or change memory where the data are read from.\n\n @param[in] in Input handler.\n @param[in] str String containing the data to read. The input data are expected to be NULL-terminated.\n Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),\n so if it is really a static string, do not use the destroy argument!\n @return Previous starting address to read data from. Note that the caller is responsible to free\n the data in case of changing string pointer @p str."]
+    #[doc = " @brief Create input handler using a fixed-size memory chunk to read data.\n\n Note that in case the destroy argument of ::ly_in_free() is used, the input mem chunk is passed to free(),\n so if @p mem is static memory, do not use the destroy argument!\n\n @param[in] mem Data to read.\n @param[in] mem_len Length of @p mem.\n @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.\n @return LY_SUCCESS in case of success\n @return LY_ERR value in case of failure."]
+    pub fn ly_in_new_memory_chunk(
+        mem: *const ::std::os::raw::c_void,
+        mem_len: u32,
+        in_: *mut *mut ly_in,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Get or change memory where the data are read from.\n\n The input data are expected to be valid (NULL-terminated for text formats).\n Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),\n so if @p str is a static string, do not use the destroy argument!\n\n @param[in] in Input handler.\n @param[in] str Data to read.\n @return Previous starting address to read data from. Note that the caller is responsible to free\n the data in case of changing string pointer @p str."]
     pub fn ly_in_memory(
         in_: *mut ly_in,
         str_: *const ::std::os::raw::c_char,
     ) -> *const ::std::os::raw::c_char;
+}
+unsafe extern "C" {
+    #[doc = " @brief Get or change memory where the data are read from.\n\n Note that in case the destroy argument of ::ly_in_free() is used, the input mem chunk is passed to free(),\n so if @p mem is static memory, do not use the destroy argument!\n\n @param[in] in Input handler.\n @param[in] mem Data to read.\n @param[in] mem_len Length of @p mem.\n @return Previous starting address to read data from. Note that the caller is responsible to free\n the data in case of changing string pointer @p str."]
+    pub fn ly_in_memory_chunk(
+        in_: *mut ly_in,
+        mem: *const ::std::os::raw::c_void,
+        mem_len: u32,
+    ) -> *const ::std::os::raw::c_void;
 }
 unsafe extern "C" {
     #[doc = " @brief Create input handler file of the given filename.\n\n @param[in] filepath Path of the file where to read data.\n @param[in] len Optional number of bytes to use from @p filepath. If 0, the @p filepath is considered to be NULL-terminated and\n the whole string is taken into account.\n @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.\n @return LY_SUCCESS in case of success\n @return LY_ERR value in case of failure."]
@@ -10307,7 +10414,10 @@ unsafe extern "C" {
     pub fn ly_in_skip(in_: *mut ly_in, count: usize) -> LY_ERR::Type;
 }
 unsafe extern "C" {
-    #[doc = " @brief Parse (and validate) data from the input handler as a YANG data tree.\n\n @param[in] ctx Context to connect with the tree being built here.\n @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe\n a subtree of the YANG module instead of starting at the schema root.\n @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).\n @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.\n @param[in] parse_options Options for parser, see @ref dataparseroptions.\n @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.\n @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, the first parsed child.\n @return LY_SUCCESS in case of successful parsing (and validation).\n @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.\n\n When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.\n This might result in allowing invalid datastore content when the schema contains cross-branch constraints,\n complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees\n first, and then request validation of the complete datastore content."]
+    pub fn free(__ptr: *mut ::std::os::raw::c_void);
+}
+unsafe extern "C" {
+    #[doc = " @brief Parse (and validate) data from the input handler as a YANG data tree.\n\n When parsing subtrees (i.e., when @p parent is non-NULL), validation is only performed on the newly parsed data.\n This might result in allowing invalid datastore content when the schema contains cross-branch constraints,\n complicated `must` statements, etc. When a full-datastore validation is desirable, parse all subtrees\n first, and then request validation of the complete datastore content.\n\n @param[in] ctx Context to connect with the tree being built here.\n @param[in] parent Optional parent to connect the parsed nodes to. If provided, the data are expected to describe\n a subtree of the YANG module instead of starting at the schema root.\n @param[in] in The input handle to provide the dumped data in the specified @p format to parse (and validate).\n @param[in] format Format of the input data to be parsed. Can be 0 to try to detect format from the input handler.\n @param[in] parse_options Options for parser, see @ref dataparseroptions.\n @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.\n @param[out] tree Full parsed data tree, note that NULL can be a valid tree. If @p parent is set, the first parsed child.\n @return LY_SUCCESS in case of successful parsing (and validation).\n @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions."]
     pub fn lyd_parse_data(
         ctx: *const ly_ctx,
         parent: *mut lyd_node,
@@ -10323,6 +10433,18 @@ unsafe extern "C" {
     pub fn lyd_parse_data_mem(
         ctx: *const ly_ctx,
         data: *const ::std::os::raw::c_char,
+        format: LYD_FORMAT::Type,
+        parse_options: u32,
+        validate_options: u32,
+        tree: *mut *mut lyd_node,
+    ) -> LY_ERR::Type;
+}
+unsafe extern "C" {
+    #[doc = " @brief Parse (and validate) input data as a YANG data tree from a bounded memory buffer.\n\n Wrapper around ::lyd_parse_data() hiding work with the input handler and some obscure options.\n Unlike ::lyd_parse_data_mem(), @p data may contain NULL bytes and the parser will not read past @p data_len bytes.\n\n @param[in] ctx Context to connect with the tree being built here.\n @param[in] data The input data in the specified @p format to parse (and validate).\n @param[in] data_len Number of readable bytes in @p data.\n @param[in] format Format of the input data to be parsed.\n @param[in] parse_options Options for parser, see @ref dataparseroptions.\n @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.\n @param[out] tree Full parsed data tree, note that NULL can be a valid tree.\n @return LY_SUCCESS in case of successful parsing (and validation).\n @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions."]
+    pub fn lyd_parse_data_mem_len(
+        ctx: *const ly_ctx,
+        data: *const ::std::os::raw::c_char,
+        data_len: u32,
         format: LYD_FORMAT::Type,
         parse_options: u32,
         validate_options: u32,
@@ -10437,7 +10559,7 @@ unsafe extern "C" {
     ) -> LY_ERR::Type;
 }
 unsafe extern "C" {
-    #[doc = " @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)\n is validate, any parents are ignored.\n\n @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of\n its parents, only the operation subtree is actually validated.\n @param[in] dep_tree Tree to be used for validating references from the operation subtree.\n @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).\n @param[out] diff Optional diff with any changes made by the validation.\n @return LY_SUCCESS on success.\n @return LY_ERR error on error."]
+    #[doc = " @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)\n is validated, any parents are ignored.\n\n @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of\n its parents, only the operation subtree is actually validated.\n @param[in] dep_tree Tree to be used for validating references from the operation subtree.\n @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).\n @param[out] diff Optional diff with any changes made by the validation.\n @return LY_SUCCESS on success.\n @return LY_ERR error on error."]
     pub fn lyd_validate_op(
         op_tree: *mut lyd_node,
         dep_tree: *const lyd_node,
@@ -10445,48 +10567,15 @@ unsafe extern "C" {
         diff: *mut *mut lyd_node,
     ) -> LY_ERR::Type;
 }
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct lyplg_type_record {
-    _unused: [u8; 0],
-}
-pub mod LYPLG {
-    #[doc = " @brief Identifiers of the plugin type."]
-    pub type Type = ::std::os::raw::c_uint;
-    #[doc = "< Specific type (typedef)"]
-    pub const LYPLG_TYPE: Type = 0;
-    #[doc = "< YANG extension"]
-    pub const LYPLG_EXTENSION: Type = 1;
-}
 unsafe extern "C" {
-    #[doc = " @brief Manually load a plugin file.\n\n Note, that a plugin can be loaded only if there is at least one context. The loaded plugins are connected with the\n existence of a context. When all the contexts are destroyed, all the plugins are unloaded.\n\n @param[in] pathname Path to the plugin file. It can contain types or extensions plugins, both are accepted and correctly\n loaded.\n\n @return LY_SUCCESS if the file contains valid plugin compatible with the library version.\n @return LY_EDENIED in case there is no context and the plugin cannot be loaded.\n @return LY_EINVAL when pathname is NULL or the plugin contains invalid content for this libyang version.\n @return LY_ESYS when the plugin file cannot be loaded."]
-    pub fn lyplg_add(pathname: *const ::std::os::raw::c_char) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Manually load extension plugins from memory\n\n Note, that a plugin can be loaded only if there is at least one context. The loaded plugins are connected with the\n existence of a context. When all the contexts are destroyed, all the plugins are unloaded.\n\n @param[in] ctx The context to which the plugin should be associated with. If NULL, the plugin is considered to be shared\n between all existing contexts.\n @param[in] version The version of plugin records.\n @param[in] recs An array of plugin records provided by the plugin implementation. The array must be terminated by a zeroed\n record.\n\n @return LY_SUCCESS if the plugins with compatible version were successfully loaded.\n @return LY_EDENIED in case there is no context and the plugin cannot be loaded.\n @return LY_EINVAL when recs is NULL or the plugin contains invalid content for this libyang version."]
-    pub fn lyplg_add_extension_plugin(
-        ctx: *mut ly_ctx,
-        version: u32,
-        recs: *const lyplg_ext_record,
+    #[doc = " @brief Validate an RPC/action request, reply, or notification. Only the operation data tree (input/output/notif)\n is validated, any parents are ignored.\n\n Similar to ::lyd_validate_op() but allows setting specific validation options.\n\n @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of\n its parents, only the operation subtree is actually validated.\n @param[in] dep_tree Tree to be used for validating references from the operation subtree.\n @param[in] data_type Operation type to validate (only YANG operations are accepted, @ref datatype).\n @param[in] val_opts Additional validation options (@ref datavalidationoptions), only #LYD_VALIDATE_MULTI_ERROR is\n allowed.\n @param[out] diff Optional diff with any changes made by the validation.\n @return LY_SUCCESS on success.\n @return LY_ERR error on error."]
+    pub fn lyd_validate_op2(
+        op_tree: *mut lyd_node,
+        dep_tree: *const lyd_node,
+        data_type: lyd_type::Type,
+        val_opts: u32,
+        diff: *mut *mut lyd_node,
     ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    #[doc = " @brief Manually load type plugins from memory\n\n Note, that a plugin can be loaded only if there is at least one context. The loaded plugins are connected with the\n existence of a context. When all the contexts are destroyed, all the plugins are unloaded.\n\n @param[in] ctx The context to which the plugin should be associated with. If NULL, the plugin is considered to be shared\n between all existing contexts.\n @param[in] version The version of plugin records.\n @param[in] recs An array of plugin records provided by the plugin implementation. The array must be terminated by a zeroed\n record.\n\n @return LY_SUCCESS if the plugins with compatible version were successfully loaded.\n @return LY_EDENIED in case there is no context and the plugin cannot be loaded.\n @return LY_EINVAL when recs is NULL or the plugin contains invalid content for this libyang version."]
-    pub fn lyplg_add_type_plugin(
-        ctx: *mut ly_ctx,
-        version: u32,
-        recs: *const lyplg_type_record,
-    ) -> LY_ERR::Type;
-}
-unsafe extern "C" {
-    pub fn free(__ptr: *mut ::std::os::raw::c_void);
-}
-unsafe extern "C" {
-    #[doc = " @brief Wrapper for realloc() call. The only difference is that if it fails to\n allocate the requested memory, the original memory is freed as well.\n\n @param[in] ptr Memory to reallocate.\n @param[in] size New size of the memory block.\n\n @return Pointer to the new memory, NULL on error."]
-    pub fn ly_realloc(
-        ptr: *mut ::std::os::raw::c_void,
-        size: usize,
-    ) -> *mut ::std::os::raw::c_void;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -11686,6 +11775,84 @@ unsafe extern "C" {
         line_length: usize,
         options: u32,
     ) -> LY_ERR::Type;
+}
+pub mod lys_ext_instance_semver_compat {
+    #[doc = " @brief COMPAT modifier of semver."]
+    pub type Type = ::std::os::raw::c_uint;
+    #[doc = "< No COMPAT modifier."]
+    pub const LYS_EXT_SEMVER_COMPAT_NONE: Type = 0;
+    #[doc = "< COMPAT modifier \"compatible\"."]
+    pub const LYS_EXT_SEMVER_COMPAT_COMPATIBLE: Type = 1;
+    #[doc = "< COMPAT modifier \"non_compatible\"."]
+    pub const LYS_EXT_SEMVER_COMPAT_NON_COMPATIBLE: Type = 2;
+}
+#[doc = " @brief Structure with parsed semver version.\n\n MAJOR.MINOR.PATCH(_COMPAT)(-PRE_RELEASE)(+BUILD)"]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct lys_ext_instance_semver {
+    #[doc = "< MAJOR version number."]
+    pub major: i32,
+    #[doc = "< MINOR version number."]
+    pub minor: i32,
+    #[doc = "< PATCH version number."]
+    pub patch: i32,
+    #[doc = "< Optional COMPAT version modifier."]
+    pub compat: lys_ext_instance_semver_compat::Type,
+    #[doc = "< Optional PRE_RELEASE matadata."]
+    pub pre_release_meta: *mut ::std::os::raw::c_char,
+    #[doc = "< Optional BUILD metadata."]
+    pub build_meta: *mut ::std::os::raw::c_char,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of lys_ext_instance_semver"]
+        [::std::mem::size_of::<lys_ext_instance_semver>() - 32usize];
+    ["Alignment of lys_ext_instance_semver"]
+        [::std::mem::align_of::<lys_ext_instance_semver>() - 8usize];
+    ["Offset of field: lys_ext_instance_semver::major"]
+        [::std::mem::offset_of!(lys_ext_instance_semver, major) - 0usize];
+    ["Offset of field: lys_ext_instance_semver::minor"]
+        [::std::mem::offset_of!(lys_ext_instance_semver, minor) - 4usize];
+    ["Offset of field: lys_ext_instance_semver::patch"]
+        [::std::mem::offset_of!(lys_ext_instance_semver, patch) - 8usize];
+    ["Offset of field: lys_ext_instance_semver::compat"]
+        [::std::mem::offset_of!(lys_ext_instance_semver, compat) - 12usize];
+    ["Offset of field: lys_ext_instance_semver::pre_release_meta"][::std::mem::offset_of!(
+        lys_ext_instance_semver,
+        pre_release_meta
+    ) - 16usize];
+    ["Offset of field: lys_ext_instance_semver::build_meta"]
+        [::std::mem::offset_of!(lys_ext_instance_semver, build_meta) - 24usize];
+};
+impl Default for lys_ext_instance_semver {
+    fn default() -> Self {
+        let mut s = ::std::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::std::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
+unsafe extern "C" {
+    #[doc = " @brief Get semantic version of a module.\n\n To get version of a submodule, use ::lysp_semver_get().\n\n @param[in] mod Module to use.\n @param[out] semver_str Optional string semantic version if defined for @p mod at its current revision. NULL otherwise.\n @return Semantic version structure;\n @return NULL if no semantic version is defined for @p mod at its current revision."]
+    pub fn lys_semver_get(
+        mod_: *const lys_module,
+        semver_str: *mut *const ::std::os::raw::c_char,
+    ) -> *const lys_ext_instance_semver;
+}
+unsafe extern "C" {
+    #[doc = " @brief Get semantic version of a parsed (sub)module.\n\n @param[in] pmod Parsed (sub)module to use.\n @param[out] semver_str Optional string semantic version if defined for @p mod at its current revision. NULL otherwise.\n @return Semantic version structure;\n @return NULL if no semantic version is defined for @p pmod at its current revision."]
+    pub fn lysp_semver_get(
+        pmod: *const lysp_module,
+        semver_str: *mut *const ::std::os::raw::c_char,
+    ) -> *const lys_ext_instance_semver;
+}
+unsafe extern "C" {
+    #[doc = " @brief Compare semantic versions ignoring metadata.\n\n @param[in] ver1 First semantic version.\n @param[in] ver2 Second semantic version.\n @return -1 if ver1 < ver2,\n @return 0 if ver1 == ver2,\n @return 1 if ver1 > ver2;"]
+    pub fn lys_semver_cmp(
+        ver1: *const lys_ext_instance_semver,
+        ver2: *const lys_ext_instance_semver,
+    ) -> ::std::os::raw::c_int;
 }
 #[doc = " @brief Structure to hold a set of (not necessary somehow connected) objects. Usually used for lyd_node,\n ::lysp_node or ::lysc_node objects, but it is not limited to them. Caller is supposed to not mix the type of objects\n added to the set and according to its knowledge about the set content, it can access objects via the members\n of the set union.\n\n Until ::ly_set_rm() or ::ly_set_rm_index() is used, the set keeps the order of the inserted items as they\n were added into the set, so the first added item is on array index 0.\n\n To free the structure, use ::ly_set_free() function, to manipulate with the structure, use other\n ly_set_* functions."]
 #[repr(C)]

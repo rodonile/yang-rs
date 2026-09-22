@@ -8,7 +8,7 @@
 
 use bitflags::bitflags;
 use std::collections::HashMap;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::mem::ManuallyDrop;
 use std::os::raw::{c_char, c_void};
 use std::path::Path;
@@ -90,6 +90,28 @@ pub type ModuleImportCb = unsafe extern "C" fn(
     free_module_data: *mut ffi::ly_module_imp_data_free_clb,
 ) -> ffi::LY_ERR::Type;
 
+/// Path list separator used by libyang's `search_dir` parameters ("directory
+/// (or directories)... delimited by colon \":\"", or ";" on Windows).
+#[cfg(not(windows))]
+const SEARCH_DIR_SEPARATOR: char = ':';
+#[cfg(windows)]
+const SEARCH_DIR_SEPARATOR: char = ';';
+
+/// Appends the directory containing libyang's internal YANG modules (no
+/// longer embedded in the library binary) to a user-supplied search dir
+/// list, so that internal modules (e.g. ietf-yang-library) can still be
+/// resolved.
+fn join_search_dir_with_module_dir(search_dir: &Path) -> String {
+    let module_dir =
+        unsafe { CStr::from_ptr(ffi::ly_yang_module_dir()).to_str().unwrap() };
+    format!(
+        "{}{}{}",
+        search_dir.to_str().unwrap(),
+        SEARCH_DIR_SEPARATOR,
+        module_dir
+    )
+}
+
 // ===== impl Context =====
 
 impl Context {
@@ -112,8 +134,13 @@ impl Context {
             unsafe { ffi::ly_log_options(ffi::LY_LOSTORE_LAST) };
         });
 
+        // libyang no longer embeds its internal YANG modules (e.g.
+        // ietf-yang-library) in the library binary; they must be located on
+        // disk via the directory returned by `ly_yang_module_dir()`.
+        let search_dir = unsafe { CStr::from_ptr(ffi::ly_yang_module_dir()) };
+
         let ret = unsafe {
-            ffi::ly_ctx_new(std::ptr::null(), options.bits(), ctx_ptr)
+            ffi::ly_ctx_new(search_dir.as_ptr(), options.bits(), ctx_ptr)
         };
         if ret != ffi::LY_ERR::LY_SUCCESS {
             // Need to construct error structure by hand.
@@ -149,7 +176,8 @@ impl Context {
         });
 
         let search_dir =
-            CString::new(search_dir.as_ref().to_str().unwrap()).unwrap();
+            CString::new(join_search_dir_with_module_dir(search_dir.as_ref()))
+                .unwrap();
         let yang_library = CString::new(yang_library_data).unwrap();
 
         let ret = unsafe {
@@ -195,7 +223,8 @@ impl Context {
         });
 
         let search_dir =
-            CString::new(search_dir.as_ref().to_str().unwrap()).unwrap();
+            CString::new(join_search_dir_with_module_dir(search_dir.as_ref()))
+                .unwrap();
         let yang_library =
             CString::new(yang_library_file.as_ref().to_str().unwrap()).unwrap();
 
