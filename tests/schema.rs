@@ -6,7 +6,7 @@ use yang6::data::DataFormat;
 use yang6::iter::IterSchemaFlags;
 use yang6::schema::{
     DataValueType, SchemaInputFormat, SchemaModule, SchemaNode, SchemaNodeKind,
-    SchemaPathFormat, SchemaSidFileStatus, SchemaStmtMust,
+    SchemaPathFormat, SchemaSemverCompat, SchemaSidFileStatus, SchemaStmtMust,
 };
 
 static SEARCH_DIR: &str = "./assets/yang/";
@@ -1230,6 +1230,37 @@ fn schema_sid_gen() {
     range_file
         .sid_range_add(2000, 50)
         .expect("failed to add sid range");
+}
+
+#[test]
+fn schema_semver() {
+    let module = r#"module semver-test {
+        namespace "urn:test:semver-test";
+        prefix s;
+        import ietf-yang-semver { prefix ysv; }
+        revision 2020-01-01 {
+            ysv:version "1.2.3";
+        }
+        leaf a { type string; }
+    }"#;
+
+    let ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
+        .expect("failed to create ctx");
+    let module =
+        SchemaModule::parse_string(&ctx, module, SchemaInputFormat::YANG)
+            .expect("failed to parse module");
+
+    let semver = module.semver().expect("expected a semantic version");
+    assert_eq!(semver.major(), 1);
+    assert_eq!(semver.minor(), 2);
+    assert_eq!(semver.patch(), 3);
+    assert_eq!(semver.compat(), SchemaSemverCompat::None);
+    assert_eq!(semver.as_str(), "1.2.3");
+
+    let parsed_semver = module
+        .semver_parsed()
+        .expect("expected a parsed semantic version");
+    assert_eq!(parsed_semver, semver);
 }
 
 #[test]
