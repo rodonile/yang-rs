@@ -5,7 +5,7 @@ use yang5::data::DataFormat;
 use yang5::iter::IterSchemaFlags;
 use yang5::schema::{
     DataValueType, SchemaInputFormat, SchemaModule, SchemaNodeKind,
-    SchemaPathFormat,
+    SchemaPathFormat, SchemaSidFileStatus,
 };
 
 static SEARCH_DIR: &str = "./assets/yang/";
@@ -690,6 +690,39 @@ fn schema_compare() {
         .compare(&out_ctx, &trg_mod, false, true)
         .expect("failed to compare schema modules");
     assert!(diff.reference().is_some());
+}
+
+#[test]
+fn schema_sid_gen() {
+    let module = r#"module sid-test {
+        namespace "urn:test:sid-test";
+        prefix s;
+        leaf a { type string; }
+        leaf b { type string; }
+    }"#;
+
+    let mut ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
+        .expect("failed to create ctx");
+    ctx.load_module("ietf-sid-file", None, &[])
+        .expect("failed to load ietf-sid-file");
+    let module =
+        SchemaModule::parse_string(&ctx, module, SchemaInputFormat::YANG)
+            .expect("failed to parse module");
+
+    let sid_file = module
+        .sid_gen(1000, 100, SchemaSidFileStatus::Unpublished, None)
+        .expect("failed to generate sid file");
+    assert!(sid_file.reference().is_some());
+
+    let updated = module
+        .sid_update(&sid_file, SchemaSidFileStatus::Published, None)
+        .expect("failed to update sid file");
+    assert!(updated.reference().is_some());
+
+    let mut range_file = sid_file;
+    range_file
+        .sid_range_add(2000, 50)
+        .expect("failed to add sid range");
 }
 
 #[test]

@@ -15,7 +15,7 @@ use std::os::raw::{c_char, c_void};
 use std::slice;
 
 use crate::context::Context;
-use crate::data::DataTree;
+use crate::data::{Data, DataTree};
 use crate::error::{Error, Result};
 use crate::iter::{
     Ancestors, Array, Getnext, IterSchemaFlags, NodeIterable, Set, Siblings,
@@ -62,6 +62,18 @@ pub enum SchemaOutputFormat {
     YANG = ffi::LYS_OUTFORMAT::LYS_OUT_YANG,
     YIN = ffi::LYS_OUTFORMAT::LYS_OUT_YIN,
     TREE = ffi::LYS_OUTFORMAT::LYS_OUT_TREE,
+}
+
+/// Status of a generated `.sid` file, mirroring the "sid-file-status" leaf
+/// from `ietf-sid-file`
+/// ([RFC 9595](https://datatracker.ietf.org/doc/html/rfc9595#section-4)).
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SchemaSidFileStatus {
+    /// Work-in-progress file, items have status "unstable".
+    Unpublished = ffi::LYS_SID_FILE_STATUS::LYS_SID_FILE_UNPUBLISHED,
+    /// Stable file, does not contain "unstable" items.
+    Published = ffi::LYS_SID_FILE_STATUS::LYS_SID_FILE_PUBLISHED,
 }
 
 /// Schema path format.
@@ -301,6 +313,86 @@ impl<'a> SchemaModule<'a> {
         }
 
         Ok(unsafe { DataTree::from_raw(ctx, rnode) })
+    }
+
+    /// Generate a `.sid` file content of the module as an `ietf-sid-file`
+    /// data tree ([RFC 9595](https://datatracker.ietf.org/doc/html/rfc9595)).
+    ///
+    /// For complete SID coverage, all features of the module must be enabled
+    /// before calling this. The module's context must have the
+    /// `ietf-sid-file` YANG module implemented.
+    ///
+    /// `entry_point` is the first SID of the assignment range, and `size` is
+    /// the number of SIDs available in it, which must cover all collected
+    /// items. `description` is optional text for the "description" leaf;
+    /// `None` auto-generates one.
+    pub fn sid_gen(
+        &self,
+        entry_point: u64,
+        size: u64,
+        status: SchemaSidFileStatus,
+        description: Option<&str>,
+    ) -> Result<DataTree<'a>> {
+        let description = description.map(|d| CString::new(d).unwrap());
+        let description_ptr = description
+            .as_ref()
+            .map_or(std::ptr::null(), |d| d.as_ptr());
+        let mut rnode = std::ptr::null_mut();
+        let rnode_ptr = &mut rnode;
+
+        let ret = unsafe {
+            ffi::lys_sid_gen(
+                self.raw,
+                entry_point,
+                size,
+                status as ffi::LYS_SID_FILE_STATUS::Type,
+                description_ptr,
+                rnode_ptr,
+            )
+        };
+        if ret != ffi::LY_ERR::LY_SUCCESS {
+            return Err(Error::new(self.context));
+        }
+
+        Ok(unsafe { DataTree::from_raw(self.context, rnode) })
+    }
+
+    /// Update a `.sid` file content of the module from a previous `.sid`
+    /// file ([RFC 9595](https://datatracker.ietf.org/doc/html/rfc9595)).
+    ///
+    /// Merges items from `prev_sid_file` (the root node of a previous `.sid`
+    /// file data tree) with items collected from the current compiled
+    /// schema: items that still exist keep their previously assigned SIDs
+    /// and statuses, new items get the first free SID in each assignment
+    /// range, and items that no longer exist are retained with status
+    /// "obsolete".
+    pub fn sid_update(
+        &self,
+        prev_sid_file: &DataTree<'_>,
+        status: SchemaSidFileStatus,
+        description: Option<&str>,
+    ) -> Result<DataTree<'a>> {
+        let description = description.map(|d| CString::new(d).unwrap());
+        let description_ptr = description
+            .as_ref()
+            .map_or(std::ptr::null(), |d| d.as_ptr());
+        let mut rnode = std::ptr::null_mut();
+        let rnode_ptr = &mut rnode;
+
+        let ret = unsafe {
+            ffi::lys_sid_update(
+                self.raw,
+                prev_sid_file.raw() as *const _,
+                status as ffi::LYS_SID_FILE_STATUS::Type,
+                description_ptr,
+                rnode_ptr,
+            )
+        };
+        if ret != ffi::LY_ERR::LY_SUCCESS {
+            return Err(Error::new(self.context));
+        }
+
+        Ok(unsafe { DataTree::from_raw(self.context, rnode) })
     }
 
     /// Get YANG submodule of the given name and revision.

@@ -910,6 +910,23 @@ impl<'a> DataTree<'a> {
         Ok(())
     }
 
+    /// Append a new SID assignment range to this `.sid` file data tree
+    /// ([RFC 9595](https://datatracker.ietf.org/doc/html/rfc9595)), modifying
+    /// it in place.
+    ///
+    /// `entry_point` is the first SID of the new range, and `size` is the
+    /// number of SIDs in it, which must be non-zero and not overlap any
+    /// existing range.
+    pub fn sid_range_add(&mut self, entry_point: u64, size: u64) -> Result<()> {
+        let ret =
+            unsafe { ffi::lys_sid_range_add(self.raw, entry_point, size) };
+        if ret != ffi::LY_ERR::LY_SUCCESS {
+            return Err(Error::new(self.context));
+        }
+
+        Ok(())
+    }
+
     /// Learn the differences between 2 data trees.
     ///
     /// The resulting diff is represented as a data tree with specific metadata
