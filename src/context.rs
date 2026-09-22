@@ -62,6 +62,12 @@ bitflags! {
 
         /// When searching for schema, prefer searchdirs instead of user callback.
         const PREFER_SEARCHDIRS = ffi::LY_CTX_PREFER_SEARCHDIRS;
+
+        /// For all compiled nodes, their private objects (`lysc_node.priv`)
+        /// are used to store the corresponding parsed node instead of
+        /// arbitrary user data. Required by [`SchemaModule::compare`](crate::schema::SchemaModule::compare)
+        /// when comparing locally resolved modules.
+        const SET_PRIV_PARSED = ffi::LY_CTX_SET_PRIV_PARSED;
     }
 }
 

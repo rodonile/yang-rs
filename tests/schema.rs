@@ -644,6 +644,55 @@ fn test_parse_schema_from_str() {
 }
 
 #[test]
+fn schema_compare() {
+    let module_v1 = r#"module cmp-test {
+        namespace "urn:test:cmp-test";
+        prefix c;
+        revision 2020-01-01;
+        leaf a { type string; }
+    }"#;
+    let module_v2 = r#"module cmp-test {
+        namespace "urn:test:cmp-test";
+        prefix c;
+        revision 2020-01-02;
+        revision 2020-01-01;
+        leaf a { type string; }
+        leaf b { type string; }
+    }"#;
+
+    let src_ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
+        .expect("failed to create ctx");
+    let trg_ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
+        .expect("failed to create ctx");
+    let src_mod = SchemaModule::parse_string(
+        &src_ctx,
+        module_v1,
+        SchemaInputFormat::YANG,
+    )
+    .expect("failed to parse module");
+    let trg_mod = SchemaModule::parse_string(
+        &trg_ctx,
+        module_v2,
+        SchemaInputFormat::YANG,
+    )
+    .expect("failed to parse module");
+
+    let mut out_ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
+        .expect("failed to create ctx");
+    out_ctx
+        .load_module("ietf-yang-schema-comparison", None, &[])
+        .expect("failed to load ietf-yang-schema-comparison");
+    out_ctx
+        .load_module("ietf-yang-schema-comparison-output", None, &[])
+        .expect("failed to load ietf-yang-schema-comparison-output");
+
+    let diff = src_mod
+        .compare(&out_ctx, &trg_mod, false, true)
+        .expect("failed to compare schema modules");
+    assert!(diff.reference().is_some());
+}
+
+#[test]
 fn test_load_modules() {
     let mut ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
         .expect("Failed to create context");

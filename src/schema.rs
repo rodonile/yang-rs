@@ -15,6 +15,7 @@ use std::os::raw::{c_char, c_void};
 use std::slice;
 
 use crate::context::Context;
+use crate::data::DataTree;
 use crate::error::{Error, Result};
 use crate::iter::{
     Ancestors, Array, Getnext, IterSchemaFlags, NodeIterable, Set, Siblings,
@@ -259,6 +260,47 @@ impl<'a> SchemaModule<'a> {
             ffi::LY_ERR::LY_ENOT => Ok(false),
             _ => Err(Error::new(self.context)),
         }
+    }
+
+    /// Compare 2 revisions of a module and generate their schema diff.
+    ///
+    /// Requires the `ietf-yang-schema-comparison` YANG module to be
+    /// implemented in `ctx`, which is used to create the returned diff data
+    /// tree; it does not need to be the same context as `self`'s or
+    /// `target`'s, since a single context can only have one revision of a
+    /// module implemented at a time (so comparing 2 revisions of the same
+    /// module normally means `self` and `target` come from different
+    /// contexts).
+    ///
+    /// Either `gen_local` or `gen_full` must be set, or both. If `gen_local`
+    /// is set, [`ContextFlags::SET_PRIV_PARSED`](crate::context::ContextFlags::SET_PRIV_PARSED)
+    /// must have been passed when creating **both** `self`'s and `target`'s
+    /// contexts.
+    pub fn compare<'b>(
+        &self,
+        ctx: &'b Context,
+        target: &SchemaModule<'_>,
+        gen_local: bool,
+        gen_full: bool,
+    ) -> Result<DataTree<'b>> {
+        let mut rnode = std::ptr::null_mut();
+        let rnode_ptr = &mut rnode;
+
+        let ret = unsafe {
+            ffi::lys_compare(
+                ctx.raw,
+                self.raw,
+                target.raw,
+                gen_local as ffi::ly_bool,
+                gen_full as ffi::ly_bool,
+                rnode_ptr,
+            )
+        };
+        if ret != ffi::LY_ERR::LY_SUCCESS {
+            return Err(Error::new(ctx));
+        }
+
+        Ok(unsafe { DataTree::from_raw(ctx, rnode) })
     }
 
     /// Get YANG submodule of the given name and revision.
