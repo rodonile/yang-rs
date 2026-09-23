@@ -73,8 +73,18 @@ static JSON_YANG_LIBRARY: &str = r###"
 
 fn create_context() -> Context {
     // Initialize context.
-    let mut ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
-        .expect("Failed to create context");
+    //
+    // DISABLE_SEARCHDIR_CWD works around a libyang regression (as of
+    // 70f8e6a1d, see libyang-searchdir-cwd-bug.md): with any explicit
+    // searchdir set, revision-less module lookups recurse into the
+    // process's CWD subtree too, which can silently pick up an unrelated
+    // same-named module (e.g. this very submodule's own
+    // examples/schema_mount/ietf-routing@2018-03-13.yang) instead of the
+    // real one below. Drop this once upstream fixes it.
+    let mut ctx = Context::new(
+        ContextFlags::NO_YANGLIBRARY | ContextFlags::DISABLE_SEARCHDIR_CWD,
+    )
+    .expect("Failed to create context");
     ctx.set_searchdir(SEARCH_DIR)
         .expect("Failed to set YANG search directory");
 
