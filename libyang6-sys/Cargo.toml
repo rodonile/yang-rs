@@ -25,3 +25,6 @@ bindgen = ["dep:bindgen"]
 # Bundle libyang6 C files into a static archive linked to this crate.
 # This removes the libyang6 dynamic link dependency.
 bundled = ["dep:cmake"]
+# Build the bundled libyang6 with CBOR support, statically linking a libcbor
+# built from the vendored sources.
+cbor = ["bundled"]

@@ -1,3 +1,6 @@
 [submodule "libyang6-sys/libyang"]
 	path = libyang6-sys/libyang
 	url = https://github.com/CESNET/libyang.git
+[submodule "libyang6-sys/libcbor"]
+	path = libyang6-sys/libcbor
+	url = https://github.com/PJK/libcbor.git

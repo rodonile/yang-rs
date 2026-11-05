@@ -82,6 +82,9 @@ pub enum DataFormat {
     JSON = ffi::LYD_FORMAT::LYD_JSON,
     /// LYB instance data format.
     LYB = ffi::LYD_FORMAT::LYD_LYB,
+    /// CBOR instance data format (RFC 9254). Requires libyang built with
+    /// libcbor support (see the `cbor` feature).
+    CBOR = ffi::LYD_FORMAT::LYD_CBOR,
 }
 
 /// Data operation type.
@@ -356,11 +359,11 @@ pub trait Data<'a> {
     /// Print data tree in the specified format to a `String`.
     ///
     /// # Warning
-    /// For printing a data tree in the `DataFormat::LYB` format, use the
-    /// [`Data::print_bytes`] method instead. Using this function with
-    /// `DataFormat::LYB` may result in mangled data because the `LYB` format
-    /// can contain invalid UTF-8 sequences, which cannot be represented in a
-    /// `String`.
+    /// For printing a data tree in the `DataFormat::LYB` or `DataFormat::CBOR`
+    /// formats, use the [`Data::print_bytes`] method instead. Using this
+    /// function with these binary formats may result in mangled data because
+    /// they can contain invalid UTF-8 sequences, which cannot be represented
+    /// in a `String`.
     fn print_string(
         &self,
         format: DataFormat,
@@ -430,10 +433,10 @@ pub trait Data<'a> {
                 bytes.push(0);
                 bytes
             }
-            DataFormat::LYB => {
-                // Get the length of the LYB data.
+            DataFormat::LYB | DataFormat::CBOR => {
+                // Get the length of the binary data.
                 let len = unsafe { ffi::ly_out_printed(ly_out) };
-                // For the LYB data format, `cstr` isn't null-terminated.
+                // For binary data formats, `cstr` isn't null-terminated.
                 // Create a byte slice from the raw parts and convert it to a
                 // vector.
                 unsafe { std::slice::from_raw_parts(cstr as _, len as _) }
@@ -444,6 +447,19 @@ pub trait Data<'a> {
         unsafe { ffi::ly_out_free(ly_out, None, 0) };
 
         Ok(bytes)
+    }
+}
+
+// Binary-safe input handler for formats that may contain NUL bytes.
+fn new_memory_chunk(
+    data: &[u8],
+    ly_in: &mut *mut ffi::ly_in,
+) -> ffi::LY_ERR::Type {
+    if data.len() > u32::MAX as usize {
+        return ffi::LY_ERR::LY_EINVAL;
+    }
+    unsafe {
+        ffi::ly_in_new_memory_chunk(data.as_ptr() as _, data.len() as _, ly_in)
     }
 }
 
@@ -558,6 +574,7 @@ impl<'a> DataTree<'a> {
             DataFormat::LYB => unsafe {
                 ffi::ly_in_new_memory(data.as_ref().as_ptr() as _, &mut ly_in)
             },
+            DataFormat::CBOR => new_memory_chunk(data.as_ref(), &mut ly_in),
         };
         if ret != ffi::LY_ERR::LY_SUCCESS {
             return Err(Error::new(context));
@@ -620,6 +637,7 @@ impl<'a> DataTree<'a> {
             DataFormat::LYB => unsafe {
                 ffi::ly_in_new_memory(data.as_ref().as_ptr() as _, &mut ly_in)
             },
+            DataFormat::CBOR => new_memory_chunk(data.as_ref(), &mut ly_in),
         };
         if ret != ffi::LY_ERR::LY_SUCCESS {
             return Err(Error::new(context));

@@ -517,6 +517,46 @@ fn data_merge() {
     assert_data_eq!(&dtree1, &dtree_merge);
 }
 
+#[cfg(feature = "cbor")]
+#[test]
+fn data_cbor_roundtrip() {
+    let ctx = create_context();
+    let dtree1 = parse_json_data(&ctx, JSON_TREE1);
+
+    let cbor = dtree1
+        .print_bytes(DataFormat::CBOR, DataPrinterFlags::WITH_SIBLINGS)
+        .expect("Failed to print CBOR");
+    let dtree2 = DataTree::parse_string(
+        &ctx,
+        &cbor,
+        DataFormat::CBOR,
+        DataParserFlags::NO_VALIDATION,
+        DataValidationFlags::empty(),
+    )
+    .expect("Failed to parse CBOR");
+    assert_data_eq!(&dtree1, &dtree2);
+}
+
+#[cfg(feature = "cbor")]
+#[test]
+fn data_cbor_roundtrip_notification() {
+    let ctx = create_context();
+    let dtree1 = parse_json_notification(&ctx, JSON_NOTIF1);
+
+    let cbor = dtree1
+        .print_bytes(DataFormat::CBOR, DataPrinterFlags::WITH_SIBLINGS)
+        .expect("Failed to print CBOR");
+    let dtree2 = DataTree::parse_op_string(
+        &ctx,
+        &cbor,
+        DataFormat::CBOR,
+        DataParserFlags::empty(),
+        DataOperation::NotificationYang,
+    )
+    .expect("Failed to parse CBOR");
+    assert_data_eq!(&dtree1, &dtree2);
+}
+
 #[test]
 fn data_add_implicit() {
     let ctx = create_context();

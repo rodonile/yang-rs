@@ -32,6 +32,8 @@
 //!   the pre-generated ones. Useful when updating this crate to use newer
 //!   libyang6 versions.
 //!   * Additional build requirements: *bindgen 0.68.0*
+//! * **cbor**: implies **bundled**, and additionally builds libcbor from the
+//!   sources so that libyang6 supports the CBOR data format (RFC 9254).
 //!
 //! ## Examples
 //!

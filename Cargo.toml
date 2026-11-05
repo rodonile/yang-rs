@@ -49,3 +49,4 @@ harness = false
 default = []
 bindgen = ["libyang6-sys/bindgen"]
 bundled = ["libyang6-sys/bundled"]
+cbor = ["libyang6-sys/cbor"]

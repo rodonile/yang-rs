@@ -44,6 +44,7 @@ By default, yang-rs uses pre-generated FFI bindings and uses dynamic linking to 
 * **bindgen**: generate new C FFI bindings dynamically instead of using the pre-generated ones. Useful when updating this crate to use newer libyang versions.
   * Additional crates: *bindgen*
   * Additional system requirements: libclang
+* **cbor**: implies **bundled**, and additionally builds libcbor from the sources so that libyang supports the CBOR data format ([RFC 9254](https://datatracker.ietf.org/doc/html/rfc9254)). Not supported on WebAssembly.
 
 ## WebAssembly
 

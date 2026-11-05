@@ -67,7 +67,36 @@ fn main() {
         cmake_config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
         cmake_config.define("CMAKE_DISABLE_FIND_PACKAGE_XXHash", "TRUE");
         // Don't let an incidentally installed system libcbor get built in.
+        #[cfg(not(feature = "cbor"))]
         cmake_config.define("CMAKE_DISABLE_FIND_PACKAGE_CBOR", "TRUE");
+        #[cfg(feature = "cbor")]
+        let cbor_dst = {
+            if wasm {
+                panic!("the cbor feature is not supported on WebAssembly");
+            }
+            if !Path::new("libcbor/.git").exists() {
+                let _ = Command::new("git")
+                    .args(&["submodule", "update", "--init", "libcbor"])
+                    .status();
+            }
+            let cbor_dst = cmake::Config::new("libcbor")
+                .define("BUILD_SHARED_LIBS", "OFF")
+                .define("WITH_EXAMPLES", "OFF")
+                .define("WITH_TESTS", "OFF")
+                .define("CMAKE_BUILD_TYPE", "Release")
+                .define("CMAKE_INSTALL_LIBDIR", "lib")
+                .define("CMAKE_POSITION_INDEPENDENT_CODE", "ON")
+                // LTO objects (on by default in Release) can't be linked by
+                // rustc's linker.
+                .define("CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE", "OFF")
+                // Otherwise the install target doesn't build the library.
+                .define("CMAKE_SKIP_INSTALL_ALL_DEPENDENCY", "OFF")
+                .build();
+            cmake_config
+                .define("CBOR_INCLUDE_DIR", cbor_dst.join("include"))
+                .define("CBOR_LIBRARY", cbor_dst.join("lib/libcbor.a"));
+            cbor_dst
+        };
 
         if wasm {
             let sdk = wasi_sdk();
@@ -166,6 +195,17 @@ fn main() {
             );
             println!("cargo:rustc-link-lib=static=c-printscan-long-double");
             println!("cargo:rustc-link-lib=static=wasi-emulated-pthread");
+        }
+        #[cfg(feature = "cbor")]
+        {
+            // Unbundled, as cargo only bundles one static lib per crate
+            // (libyang) and would silently drop most of libcbor's objects.
+            println!(
+                "cargo:rustc-link-search=native={}/lib",
+                cbor_dst.display()
+            );
+            println!("cargo:rustc-link-lib=static:-bundle,+whole-archive=cbor");
+            println!("cargo:rerun-if-changed=libcbor");
         }
         println!("cargo:rerun-if-changed=libyang");
     }
