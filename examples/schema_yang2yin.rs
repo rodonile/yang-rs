@@ -1,5 +1,5 @@
-use yang5::context::{Context, ContextFlags};
-use yang5::schema::{SchemaOutputFormat, SchemaPrinterFlags};
+use yang6::context::{Context, ContextFlags};
+use yang6::schema::{SchemaOutputFormat, SchemaPrinterFlags};
 
 static SEARCH_DIR: &str = "./assets/yang/";
 static MODULE_NAME: &str = "ietf-routing";

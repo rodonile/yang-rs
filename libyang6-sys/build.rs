@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 // Revision of the libyang submodule the pre-generated bindings were taken from.
 #[allow(dead_code)]
-const LIBYANG_REV: &str = "f302d86cd6083c2bfe16fc2122bc6d4be69ce7a2";
+const LIBYANG_REV: &str = "f7e0cc1bc99ec9280af1010a94ba8dd8ef448f6d";
 
 // Root of the WASI SDK, holding the sysroot and the CMake toolchain file used
 // to cross-compile libyang and its dependencies to WebAssembly.
@@ -39,7 +39,7 @@ fn wasi_clang_include(sdk: &std::path::Path) -> PathBuf {
 
 fn main() {
     let dst = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let out_file = dst.join("libyang5.rs");
+    let out_file = dst.join("libyang6.rs");
     let wasm = env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "wasm32";
 
     // Headers of the libyang copy this crate links against, when it builds one
@@ -66,6 +66,8 @@ fn main() {
         cmake_config.define("CMAKE_BUILD_TYPE", "Release");
         cmake_config.define("CMAKE_POSITION_INDEPENDENT_CODE", "ON");
         cmake_config.define("CMAKE_DISABLE_FIND_PACKAGE_XXHash", "TRUE");
+        // Don't let an incidentally installed system libcbor get built in.
+        cmake_config.define("CMAKE_DISABLE_FIND_PACKAGE_CBOR", "TRUE");
 
         if wasm {
             let sdk = wasi_sdk();
@@ -191,11 +193,12 @@ fn main() {
             // need to release the strings it hands out.
             .allowlist_file(".*/libyang/.*\\.h")
             .allowlist_function("free")
-            // Plugin directories baked in by libyang's own build. They are of
-            // no use from Rust, and keeping them would tie the pre-generated
-            // bindings to the machine they were generated on.
+            // Plugin and module directories baked in by libyang's own build.
+            // They are of no use from Rust, and keeping them would tie the
+            // pre-generated bindings to the machine they were generated on.
             .blocklist_item("LYPLG_TYPE_DIR")
-            .blocklist_item("LYPLG_EXT_DIR");
+            .blocklist_item("LYPLG_EXT_DIR")
+            .blocklist_item("LY_YANG_MODULE_DIR");
         for path in &include_paths {
             builder = builder.clang_arg(format!("-I{}", path.display()));
         }
@@ -216,18 +219,18 @@ fn main() {
         }
         let bindings = builder
             .generate()
-            .expect("Unable to generate libyang5 bindings");
+            .expect("Unable to generate libyang6 bindings");
         bindings
             .write_to_file(out_file)
-            .expect("Couldn't write libyang5 bindings!");
+            .expect("Couldn't write libyang6 bindings!");
     }
     #[cfg(not(feature = "bindgen"))]
     {
         // The bindings encode the layout of libyang's structs, which differs
         // between the 64-bit hosts and 32-bit WebAssembly.
         let bindings = match wasm {
-            true => format!("libyang5-{}-wasm32.rs", LIBYANG_REV),
-            false => format!("libyang5-{}.rs", LIBYANG_REV),
+            true => format!("libyang6-{}-wasm32.rs", LIBYANG_REV),
+            false => format!("libyang6-{}.rs", LIBYANG_REV),
         };
         let mut pregen_bindings = PathBuf::new();
         pregen_bindings.push(env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -235,7 +238,7 @@ fn main() {
         pregen_bindings.push(bindings);
 
         std::fs::copy(&pregen_bindings, &out_file)
-            .expect("Unable to copy pre-generated libyang5 bindings");
+            .expect("Unable to copy pre-generated libyang6 bindings");
     }
 
     #[cfg(not(feature = "bundled"))]

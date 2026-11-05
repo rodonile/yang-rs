@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
-use yang5::context::{Context, ContextFlags};
-use yang5::data::{
+use yang6::context::{Context, ContextFlags};
+use yang6::data::{
     Data, DataDiff, DataDiffFlags, DataFormat, DataImplicitFlags,
     DataOperation, DataParserFlags, DataPrinterFlags, DataTree,
     DataTreeOwningRef, DataValidationFlags,

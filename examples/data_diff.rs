@@ -1,5 +1,5 @@
-use yang5::context::{Context, ContextFlags};
-use yang5::data::{
+use yang6::context::{Context, ContextFlags};
+use yang6::data::{
     Data, DataDiffFlags, DataFormat, DataParserFlags, DataPrinterFlags,
     DataTree, DataValidationFlags,
 };

@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
-use yang5::context::{Context, ContextFlags};
-use yang5::data::DataFormat;
-use yang5::iter::IterSchemaFlags;
-use yang5::schema::{
+use yang6::context::{Context, ContextFlags};
+use yang6::data::DataFormat;
+use yang6::iter::IterSchemaFlags;
+use yang6::schema::{
     DataValueType, SchemaInputFormat, SchemaModule, SchemaNode, SchemaNodeKind,
     SchemaPathFormat, SchemaStmtMust,
 };
@@ -74,8 +74,14 @@ static JSON_YANG_LIBRARY: &str = r###"
 
 fn create_context() -> Context {
     // Initialize context.
-    let mut ctx = Context::new(ContextFlags::NO_YANGLIBRARY)
-        .expect("Failed to create context");
+    //
+    // DISABLE_SEARCHDIR_CWD works around a libyang 6 bug where revision-less
+    // lookups also recurse into CWD and can pick up the submodule's own
+    // example modules (e.g. ietf-routing@2018-03-13) instead of SEARCH_DIR's.
+    let mut ctx = Context::new(
+        ContextFlags::NO_YANGLIBRARY | ContextFlags::DISABLE_SEARCHDIR_CWD,
+    )
+    .expect("Failed to create context");
     ctx.set_searchdir(SEARCH_DIR)
         .expect("Failed to set YANG search directory");
 

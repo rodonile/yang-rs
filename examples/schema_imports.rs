@@ -1,4 +1,4 @@
-use yang5::context::{Context, ContextFlags};
+use yang6::context::{Context, ContextFlags};
 
 static SEARCH_DIR: &str = "./assets/yang/";
 static MODULE_NAME: &str = "ietf-isis";

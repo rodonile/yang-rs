@@ -133,13 +133,13 @@ impl LogCallback for DefaultLogger {
             ffi::LY_LOG_LEVEL::LY_LLVRB => log::Level::Info,
             ffi::LY_LOG_LEVEL::LY_LLDBG => log::Level::Debug,
             unknown => {
-                log::error!("Unexpected log level {unknown} from libyang5, logging as debug");
+                log::error!("Unexpected log level {unknown} from libyang6, logging as debug");
                 log::Level::Debug
             }
         };
         let msg = msg.unwrap_or_else(|| Cow::from(""));
         log::log! {
-            target: "libyang5",
+            target: "libyang6",
             level,
             "schema_path={schema_path:?}, data_path={data_path:?}, line={line}, msg={msg}",
         }

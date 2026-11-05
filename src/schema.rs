@@ -22,7 +22,7 @@ use crate::iter::{
     Traverse,
 };
 use crate::utils::*;
-use libyang5_sys as ffi;
+use libyang6_sys as ffi;
 
 /// Available YANG schema tree structures representing YANG module.
 #[derive(Clone, Debug)]
@@ -605,6 +605,15 @@ impl SchemaSubmodule<'_> {
     /// of the sub-module.
     pub fn as_raw(&self) -> *mut ffi::lysp_submodule {
         self.raw
+    }
+
+    /// Returns the latest revision of the submodule, if any.
+    ///
+    /// Since a submodule's revision list isn't guaranteed to be ordered,
+    /// this uses libyang's own helper to determine the latest one instead of
+    /// reading the first entry of the revision list directly.
+    pub fn revision(&self) -> Option<&str> {
+        char_ptr_to_opt_str(unsafe { ffi::lysp_submodule_revision(self.raw) })
     }
 
     /// Print schema tree in the specified format into a string.

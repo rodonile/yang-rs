@@ -22,7 +22,7 @@ use crate::schema::{
     eval_condition, DataValue, SchemaModule, SchemaNode, SchemaNodeKind,
 };
 use crate::utils::*;
-use libyang5_sys as ffi;
+use libyang6_sys as ffi;
 
 /// YANG data tree.
 #[derive(Debug)]
