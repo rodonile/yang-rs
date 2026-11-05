@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 // Revision of the libyang submodule the pre-generated bindings were taken from.
 #[allow(dead_code)]
-const LIBYANG_REV: &str = "f7e0cc1bc99ec9280af1010a94ba8dd8ef448f6d";
+const LIBYANG_REV: &str = "d51dda34eb18bf1a85efa1ff2e594ea385c83476";
 
 // Root of the WASI SDK, holding the sysroot and the CMake toolchain file used
 // to cross-compile libyang and its dependencies to WebAssembly.
