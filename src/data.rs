@@ -559,9 +559,11 @@ impl<'a> DataTree<'a> {
         format: DataFormat,
         parser_options: DataParserFlags,
         validation_options: DataValidationFlags,
+        anchor: Option<&str>,
     ) -> Result<DataTree<'a>> {
         let mut rnode = std::ptr::null_mut();
         let rnode_ptr = &mut rnode;
+        let anchor = anchor.map(|anchor| CString::new(anchor).unwrap());
 
         // Create input handler.
         let cdata;
@@ -581,7 +583,7 @@ impl<'a> DataTree<'a> {
         }
 
         let ret = unsafe {
-            ffi::lyd_parse_data(
+            ffi::lyd_parse_data_with_anchor(
                 context.raw,
                 std::ptr::null_mut(),
                 ly_in,
@@ -589,6 +591,7 @@ impl<'a> DataTree<'a> {
                 parser_options.bits(),
                 validation_options.bits(),
                 rnode_ptr,
+                anchor.as_ref().map_or(std::ptr::null(), |a| a.as_ptr()),
             )
         };
         unsafe { ffi::ly_in_free(ly_in, 0) };
@@ -614,6 +617,35 @@ impl<'a> DataTree<'a> {
             format,
             parser_options,
             validation_options,
+            None,
+        )
+    }
+
+    /// Parse (and validate) input data as a YANG data tree, resolving anydata
+    /// payloads against a schema anchor.
+    ///
+    /// `anchor` is an absolute schema data path in JSON format (module names
+    /// as prefixes). The payload root of the first anydata instance is
+    /// resolved as the anchor node itself, then parsed strictly and validated
+    /// (unless [`DataParserFlags::NO_VALIDATION`] is set). Other anydata
+    /// instances are parsed as without an anchor. The anchor is only
+    /// used together with [`DataParserFlags::ANYDATA_STRICT`]; without it,
+    /// this behaves like [`DataTree::parse_string`].
+    pub fn parse_string_with_anchor(
+        context: &'a Context,
+        data: impl AsRef<[u8]>,
+        format: DataFormat,
+        parser_options: DataParserFlags,
+        validation_options: DataValidationFlags,
+        anchor: &str,
+    ) -> Result<DataTree<'a>> {
+        DataTree::_parse_string(
+            context,
+            data,
+            format,
+            parser_options,
+            validation_options,
+            Some(anchor),
         )
     }
 
